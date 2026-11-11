@@ -72,7 +72,8 @@ header { display: flex; flex-wrap: wrap; align-items: end; justify-content: spac
   display: grid; grid-row: 1 / -1; grid-template-rows: subgrid; row-gap: 6px; }
 @media (max-width: 760px) {
   .grid { grid-template-columns: 1fr; grid-template-rows: none; row-gap: 10px; }
-  .day { grid-row: auto; grid-template-rows: auto repeat(var(--n), minmax(36px, auto)) auto; }
+  .day { grid-row: auto; display: flex; flex-direction: column; gap: 6px; }
+  .slot { min-height: 34px; }
   .slot.trail { display: none; }
 }
 .dayhead { grid-row: 1; display: grid; gap: 6px; align-content: start; }
@@ -335,7 +336,7 @@ function renderGrid() {
       if (taken.has(n)) continue;
       const bell = bells[n - 1];
       const slot = el('div', 'slot' + (n > last ? ' trail' : ''));
-      slot.style.gridRow = String(n + 1);
+      slot.style.gridRow = String(n + 1); slot.style.order = n;
       slot.append(el('span', 'num', `${n}.`), el('span', 'mono', bell ? `${bell.start}–${bell.end}` : ''), el('span', 'freetxt', 'vaba'));
       col.append(slot);
     }
@@ -349,14 +350,14 @@ function renderGrid() {
     };
     for (const c of clusters) {
       const cell = el('div', 'cell');
-      cell.style.gridRow = `${c.p0 + 1} / ${c.p1 + 2}`;
+      cell.style.gridRow = `${c.p0 + 1} / ${c.p1 + 2}`; cell.style.order = c.p0;
       c.items.forEach(b => cell.append(card(b)));
       if (c.items.length > 1) cell.append(el('div', 'note', 'Kattuvad tunnid'));
       col.append(cell);
     }
     // anything the bell schedule could not place goes underneath
     const loose = dayLessons.filter(b => !b.p0);
-    if (loose.length) { const cell = el('div', 'cell'); cell.style.gridRow = `${N + 2}`; loose.forEach(b => cell.append(card(b))); col.append(cell); }
+    if (loose.length) { const cell = el('div', 'cell'); cell.style.gridRow = `${N + 2}`; cell.style.order = 999; loose.forEach(b => cell.append(card(b))); col.append(cell); }
     grid.append(col);
   }
   const det = $('otherSubs'), ul = det.querySelector('ul');
