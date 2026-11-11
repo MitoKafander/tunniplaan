@@ -87,7 +87,9 @@ def plokid(andmed, opetaja):
         else:
             out.append(dict(k))
     for b in out:
-        b['hours'] = b.pop('p1') - b.pop('p0') + 1
+        p0, p1 = b.pop('p0'), b.pop('p1')
+        b['hours'] = p1 - p0 + 1
+        b['lessons'] = str(p0) if p0 == p1 else f'{p0}–{p1}'
     return out
 
 
@@ -147,6 +149,9 @@ def varu_linnak(lid):
         nadal = get_json(VARU + n['file'])
         e = dt.date.fromisoformat(nadal['monday'])
         r = e + dt.timedelta(days=6)
+        kellad = nadal.get('periods', {}).get(kood) or []
+        algus = {k['start']: i + 1 for i, k in enumerate(kellad)}
+        lopp = {k['end']: i + 1 for i, k in enumerate(kellad)}
         tunnid = sorted([l for l in nadal['lessons'] if l.get('campus') == kood and MINU_NIMED & set(l.get('teachers') or [])],
                         key=lambda l: (l['day'], minutid(l['start'])))
         plokid_ = []
@@ -154,13 +159,20 @@ def varu_linnak(lid):
             b = {'day': l['day'], 'start': l['start'], 'end': l['end'], 'subject': l['subject'],
                  'group': ', '.join(l.get('classes') or []) + (f" ({', '.join(l['groups'])})" if l.get('groups') else ''),
                  'room': ', '.join(l.get('rooms') or []), 'weeks': '',
+                 'p0': algus.get(l['start']), 'p1': lopp.get(l['end']),
                  'hours': max(1, round((minutid(l['end']) - minutid(l['start']) + 15) / 60))}
+            if b['p0'] and b['p1']:
+                b['hours'] = b['p1'] - b['p0'] + 1
             v = plokid_[-1] if plokid_ else None
             if (v and minutid(b['start']) - minutid(v['end']) <= 15 and minutid(b['start']) >= minutid(v['end'])
                     and all(v[x] == b[x] for x in ('day', 'subject', 'group', 'room'))):
-                v['end'], v['hours'] = b['end'], v['hours'] + b['hours']
+                v['end'], v['hours'], v['p1'] = b['end'], v['hours'] + b['hours'], b['p1']
             else:
                 plokid_.append(b)
+        for b in plokid_:
+            p0, p1 = b.pop('p0'), b.pop('p1')
+            if p0 and p1:
+                b['lessons'] = str(p0) if p0 == p1 else f'{p0}–{p1}'
         versioonid.append({'tt': 0, 'name': f"{e:%d.%m}-{r:%d.%m.%y} (varuallikas)", 'from': nadal['monday'], 'blocks': plokid_})
     return {'campus': lid, 'fetchedAt': indeks.get('generated') or now_iso(), 'versions': versioonid, 'subs': [],
             'fallback': True}

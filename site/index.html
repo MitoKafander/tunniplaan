@@ -251,7 +251,7 @@ function renderNext() {
       const sameDay = isoLocal(d) === isoLocal(now);
       const when = sameDay ? 'Täna' : (isoLocal(d) === isoLocal(addDays(now, 1)) ? 'Homme' : `${DAYS[nxt.day]} ${dm(d)}`);
       const s = new Date(d); s.setHours(0, mins(nxt.start), 0, 0);
-      box.append(el('strong', null, `${when} ${nxt.start}–${nxt.end} · ${nxt.campusName}`),
+      box.append(el('strong', null, `${when} ${nxt.start}–${nxt.end}${nxt.lessons ? ` (${nxt.lessons}. tund)` : ''} · ${nxt.campusName}`),
                  el('span', null, [nxt.subject, nxt.group, nxt.room].filter(Boolean).join(' · ')));
       if (sameDay && s <= now) box.append(el('span', 'note', 'Käib praegu'));
       return;
@@ -284,7 +284,7 @@ function renderGrid() {
       const kons = /konsultatsioon|järelvastamine/i.test(b.subject);
       const end = new Date(d); end.setHours(0, mins(b.end), 0, 0);
       const card = el('div', `lesson ${b.campus}${kons ? ' kons' : ''}${end < now ? ' past' : ''}`);
-      const time = el('div', 'time'); time.append(el('span', null, `${b.start}–${b.end}`), el('span', null, `${b.hours} ak/h`));
+      const time = el('div', 'time'); time.append(el('span', null, `${b.start}–${b.end}`), el('span', null, (b.lessons ? `${b.lessons}. tund · ` : '') + `${b.hours} ak/h`));
       card.append(time, el('div', 'subj', b.subject));
       const meta = [b.group, b.room || 'ruum puudub', b.campusName].filter(Boolean).join(' · ');
       card.append(el('div', 'meta', meta));
