@@ -266,6 +266,7 @@ function renderGrid() {
   if (!snap) { grid.append(el('p', 'empty', 'Tunniplaani andmeid ei saanud laadida. Vajuta „Värskenda”.')); $('totals').textContent = ''; return; }
   const { out, notes } = lessonsForWeek(weekMon);
   for (const n of notes) {
+    if (snap[n.key]?.fallback) noteBox.append(Object.assign(el('p'), { innerHTML: `<b>${n.meta.name}:</b> EduPage ei vastanud, tunnid on võetud kolleegi tunniplaanisaidist. Asendusi selle linnaku kohta ei näidata.` }));
     if (n.w.state === 'missing') noteBox.append(Object.assign(el('p'), { innerHTML: `<b>${n.meta.name}:</b> selle nädala plaani pole EduPage’is veel avaldatud.` }));
     if (n.w.state === 'hidden') noteBox.append(Object.assign(el('p'), { innerHTML: `<b>${n.meta.name}:</b> plaan on olemas, aga avalikult peidetud (tt ${n.w.v.tt}).` }));
     if (n.w.state === 'carried') noteBox.append(Object.assign(el('p'), { innerHTML: `<b>${n.meta.name}:</b> eraldi nädalaplaani pole, näidatud on viimane kehtiv versioon (${n.w.v.name.split(' (')[0]}).` }));

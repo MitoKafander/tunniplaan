@@ -3,6 +3,10 @@
 """Mikk Rosini tunniplaan: loeb EduPage'i (Kesklinn + Mustamäe) tunnid ja asendused ning
 menuu.techno.ee lõunamenüü ja kirjutab need faili site/data/snap.json.
 Käivitab GitHub Actions (.github/workflows/pages.yml). Ainult Pythoni standardteek.
+
+EduPage'i server lükkab GitHubi masinate ühendused sageli tagasi. Siis võetakse linnaku tunnid
+kolleegi avalikust tunniplaanisaidist (kasparsu.github.io/tahvel-tunniplaan, uueneb iga 30 min),
+kus Rosin on Kesklinnas „Mikk Rosin“ ja Mustamäel „Rosin“. Varuallikas asendusi ei sisalda.
 """
 import datetime as dt
 import html
@@ -16,16 +20,25 @@ VALJUND = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 LINNAKUD = {'kesklinn': ('https://kesklinn-techno.edupage.org', '-88'),
             'mustamae': ('https://mustamae-techno.edupage.org', '-77')}
 RUHMAD = {'M-MES-26', 'K-SA-24', 'K-VM-24', 'K-VMT-26-1', 'K-VMT-26-2', 'K-ITS4-26MS'}
-UA = {'User-Agent': 'Mozilla/5.0 (tunniplaan-artifact)'}
+UA = {'User-Agent': 'Mozilla/5.0 (tunniplaan)'}
+VARU = 'https://kasparsu.github.io/tahvel-tunniplaan/data/'
+VARU_LINNAK = {'kesklinn': 'K', 'mustamae': 'M'}
+MINU_NIMED = {'Rosin', 'Mikk Rosin'}
 
 
-def post(url, args):
+def get_json(url):
+    req = urllib.request.Request(url, headers=UA)
+    with urllib.request.urlopen(req, timeout=30) as r:
+        return json.loads(r.read().decode('utf-8'))
+
+
+def post(url, args, katseid=3, aeg=30):
     body = json.dumps({'__args': args, '__gsh': '00000000'}).encode('utf-8')
     req = urllib.request.Request(url, data=body, headers={**UA, 'Content-Type': 'application/json; charset=UTF-8'})
     viga = None
-    for katse in range(3):
+    for katse in range(katseid):
         try:
-            with urllib.request.urlopen(req, timeout=30) as r:
+            with urllib.request.urlopen(req, timeout=aeg) as r:
                 return json.loads(r.read().decode('utf-8'))
         except Exception as e:
             viga = e
@@ -108,7 +121,7 @@ def linnak(lid, tana):
     host, opetaja = LINNAKUD[lid]
     aasta = tana.year if tana.month >= 8 else tana.year - 1
     lo, hi = (tana - dt.timedelta(days=14)).isoformat(), (tana + dt.timedelta(days=70)).isoformat()
-    loend = (post(host + '/timetable/server/ttviewer.js?__func=getTTViewerData', [None, aasta])['r']
+    loend = (post(host + '/timetable/server/ttviewer.js?__func=getTTViewerData', [None, aasta], katseid=1, aeg=20)['r']
              .get('regular') or {}).get('timetables', [])
     jarjest = sorted([t for t in loend if t.get('datefrom')], key=lambda t: t['datefrom'])
     enne = [t for t in jarjest if t['datefrom'] <= lo]
@@ -125,10 +138,51 @@ def linnak(lid, tana):
     return {'campus': lid, 'fetchedAt': now_iso(), 'versions': versioonid, 'subs': asendused(host, tana)}
 
 
+def varu_linnak(lid):
+    """Kolleegi saidi nädalafailid → sama kuju mis EduPage'ist (üks „versioon“ nädala kohta)."""
+    kood = VARU_LINNAK[lid]
+    indeks = get_json(VARU + 'index.json')
+    versioonid = []
+    for n in indeks.get('weeks', []):
+        nadal = get_json(VARU + n['file'])
+        e = dt.date.fromisoformat(nadal['monday'])
+        r = e + dt.timedelta(days=6)
+        tunnid = sorted([l for l in nadal['lessons'] if l.get('campus') == kood and MINU_NIMED & set(l.get('teachers') or [])],
+                        key=lambda l: (l['day'], minutid(l['start'])))
+        plokid_ = []
+        for l in tunnid:
+            b = {'day': l['day'], 'start': l['start'], 'end': l['end'], 'subject': l['subject'],
+                 'group': ', '.join(l.get('classes') or []) + (f" ({', '.join(l['groups'])})" if l.get('groups') else ''),
+                 'room': ', '.join(l.get('rooms') or []), 'weeks': '',
+                 'hours': max(1, round((minutid(l['end']) - minutid(l['start']) + 15) / 60))}
+            v = plokid_[-1] if plokid_ else None
+            if (v and minutid(b['start']) - minutid(v['end']) <= 15 and minutid(b['start']) >= minutid(v['end'])
+                    and all(v[x] == b[x] for x in ('day', 'subject', 'group', 'room'))):
+                v['end'], v['hours'] = b['end'], v['hours'] + b['hours']
+            else:
+                plokid_.append(b)
+        versioonid.append({'tt': 0, 'name': f"{e:%d.%m}-{r:%d.%m.%y} (varuallikas)", 'from': nadal['monday'], 'blocks': plokid_})
+    return {'campus': lid, 'fetchedAt': indeks.get('generated') or now_iso(), 'versions': versioonid, 'subs': [],
+            'fallback': True}
+
+
+def varu_louna():
+    d = get_json(VARU + 'lunch.json')
+    out = {}
+    for lid, kood in VARU_LINNAK.items():
+        paevad = {}
+        for p in (d.get('campuses', {}).get(kood) or {}).get('days', []):
+            read = []
+            for sek in p.get('sections', []):
+                for i, roog in enumerate(sek.get('dishes', [])):
+                    read.append({'label': sek.get('title', '') if i == 0 else '', 'name': roog.get('name')})
+            paevad[p['date']] = read
+        out[lid] = paevad
+    return out
+
+
 def louna():
-    req = urllib.request.Request('https://menuu.techno.ee/menu.php?format=json', headers=UA)
-    with urllib.request.urlopen(req, timeout=30) as r:
-        d = json.loads(r.read().decode('utf-8'))
+    d = get_json('https://menuu.techno.ee/menu.php?format=json')
     out = {}
     for c in d.get('campuses', []):
         slug = c['campus']['slug']
@@ -149,12 +203,19 @@ def now_iso():
 
 def main():
     tana = dt.date.today()
-    snap = {'fetchedAt': now_iso(), 'source': 'github',
-            'kesklinn': linnak('kesklinn', tana), 'mustamae': linnak('mustamae', tana)}
+    snap = {'fetchedAt': now_iso(), 'source': 'github'}
+    for lid in LINNAKUD:
+        try:
+            snap[lid] = linnak(lid, tana)
+            print(lid, 'EduPage otse')
+        except Exception as e:
+            print(lid, 'EduPage ei vasta (', e, ') → varuallikas')
+            snap[lid] = varu_linnak(lid)
     try:
         snap['lunch'] = louna()
     except Exception as e:
-        print('lõuna ebaõnnestus:', e)
+        print('lõuna otse ebaõnnestus (', e, ') → varuallikas')
+        snap['lunch'] = varu_louna()
     os.makedirs(os.path.dirname(VALJUND), exist_ok=True)
     tmp = VALJUND + '.tmp'
     with open(tmp, 'w', encoding='utf-8') as f:
