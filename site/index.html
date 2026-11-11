@@ -67,18 +67,34 @@ header { display: flex; flex-wrap: wrap; align-items: end; justify-content: spac
 .next .eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
 .next strong { font-family: var(--f-display); font-size: 19px; }
 
-.grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
-@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
-.day { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+.grid { --n: 8; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); grid-template-rows: auto repeat(var(--n), minmax(40px, auto)) auto; column-gap: 10px; row-gap: 6px; }
+.day { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px; min-width: 0;
+  display: grid; grid-row: 1 / -1; grid-template-rows: subgrid; row-gap: 6px; }
+@media (max-width: 760px) {
+  .grid { grid-template-columns: 1fr; grid-template-rows: none; row-gap: 10px; }
+  .day { grid-row: auto; grid-template-rows: auto repeat(var(--n), minmax(36px, auto)) auto; }
+  .slot.trail { display: none; }
+}
+.dayhead { grid-row: 1; display: grid; gap: 6px; align-content: start; }
+.cell { display: grid; gap: 6px; align-content: stretch; min-width: 0; }
+.cell .lesson { height: 100%; }
+.cell:has(.lesson + .lesson) .lesson { height: auto; }
+.slot { display: flex; align-items: center; gap: 8px; padding: 0 10px; border: 1px dashed var(--line); border-radius: 10px; color: var(--muted); font-size: 12.5px; min-width: 0; }
+.slot .num { font-weight: 600; min-width: 2.2ch; }
+.slot .mono { font-size: 11.5px; }
+.slot .freetxt { margin-left: auto; font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; opacity: .7; }
+.freeday { display: grid; place-items: center; color: var(--muted); border: 1px dashed var(--line); border-radius: 10px; font-size: 13px; }
+@media (max-width: 760px) { .freeday { grid-row: auto !important; padding: 10px; } }
 .day.today { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink); }
 .day h3 { margin: 0; font-size: 14px; font-weight: 600; display: flex; justify-content: space-between; gap: 8px; }
 .day h3 .mono { color: var(--muted); font-size: 12px; font-weight: 500; }
 .empty { color: var(--muted); font-size: 13px; }
-.lesson { border-radius: 10px; padding: 9px 10px; display: grid; gap: 2px; border-left: 4px solid; min-width: 0; }
+.lesson { border-radius: 10px; padding: 9px 10px; display: grid; gap: 2px; align-content: start; border-left: 4px solid; min-width: 0; }
 .lesson.K { background: var(--kesk-soft); border-color: var(--kesk); }
 .lesson.M { background: var(--must-soft); border-color: var(--must); }
 .lesson.kons { background: transparent; border-style: dashed; border-left-style: solid; border-width: 1px 1px 1px 4px; }
-.lesson .time { font-family: var(--f-mono); font-size: 12.5px; display: flex; justify-content: space-between; gap: 6px; }
+.lesson .time { font-family: var(--f-mono); font-size: 12.5px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 8px; }
+.lesson .time span { white-space: nowrap; }
 .lesson .subj { font-weight: 600; overflow-wrap: anywhere; }
 .lesson .meta { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
 .lesson.past { opacity: .55; }
@@ -205,12 +221,21 @@ function weekFor(campusKey, mon) {
   return { state: 'missing' };
 }
 
+// Lesson numbers: from the scraper ("7–8"), else matched against the campus bell times.
+function withSlots(b) {
+  const m = String(b.lessons || '').match(/^(\d+)(?:–(\d+))?$/);
+  if (m) { b.p0 = +m[1]; b.p1 = +(m[2] || m[1]); return b; }
+  const i0 = b.bells.findIndex(x => x.start === b.start), i1 = b.bells.findIndex(x => x.end === b.end);
+  if (i0 >= 0 && i1 >= i0) { b.p0 = i0 + 1; b.p1 = i1 + 1; b.lessons = b.p0 === b.p1 ? String(b.p0) : `${b.p0}–${b.p1}`; }
+  return b;
+}
+
 function lessonsForWeek(mon) {
   const out = [], notes = [];
   for (const [key, meta] of Object.entries(CAMPUS)) {
     const w = weekFor(key, mon);
     if (w.state === 'ok' || w.state === 'carried')
-      for (const b of w.v.blocks || []) out.push({ ...b, campus: meta.code, campusName: meta.name });
+      for (const b of w.v.blocks || []) out.push(withSlots({ ...b, campus: meta.code, campusName: meta.name, bells: w.v.bells || [] }));
     notes.push({ key, meta, w });
   }
   out.sort((a, b) => a.day - b.day || mins(a.start) - mins(b.start));
@@ -274,26 +299,64 @@ function renderGrid() {
   const now = new Date(), todayIso = isoLocal(now);
   const subs = [...(snap.kesklinn?.subs || []).map(s => ({ ...s, c: 'Kesklinn' })), ...(snap.mustamae?.subs || []).map(s => ({ ...s, c: 'Mustamäe' }))];
   const other = [];
+  const slotted = out.filter(b => b.p0);
+  const N = Math.max(4, ...slotted.map(b => b.p1));
+  grid.style.setProperty('--n', N);
   for (let i = 0; i < 5; i++) {
     const d = addDays(weekMon, i), iso = isoLocal(d);
     const col = el('div', 'day' + (iso === todayIso ? ' today' : ''));
-    const h = el('h3'); h.append(el('span', null, DAYS[i]), el('span', 'mono', dm(d))); col.append(h);
-    const dayLessons = out.filter(b => b.day === i);
-    if (!dayLessons.length) col.append(el('span', 'empty', 'Tunde pole'));
-    for (const b of dayLessons) {
-      const kons = /konsultatsioon|järelvastamine/i.test(b.subject);
-      const end = new Date(d); end.setHours(0, mins(b.end), 0, 0);
-      const card = el('div', `lesson ${b.campus}${kons ? ' kons' : ''}${end < now ? ' past' : ''}`);
-      const time = el('div', 'time'); time.append(el('span', null, `${b.start}–${b.end}`), el('span', null, (b.lessons ? `${b.lessons}. tund · ` : '') + `${b.hours} ak/h`));
-      card.append(time, el('div', 'subj', b.subject));
-      const meta = [b.group, b.room || 'ruum puudub', b.campusName].filter(Boolean).join(' · ');
-      card.append(el('div', 'meta', meta));
-      col.append(card);
-    }
+    const head = el('div', 'dayhead');
+    const h = el('h3'); h.append(el('span', null, DAYS[i]), el('span', 'mono', dm(d))); head.append(h);
     for (const s of subs.filter(s => s.date === iso)) {
-      if (/Rosin/.test(s.info) || /Rosin/.test(s.group)) col.append(el('div', 'note', `${s.c} · ${s.group} · ${s.periods}. tund: ${s.info}${s.cancelled ? ' (tühistatud)' : ''}`));
+      if (/Rosin/.test(s.info) || /Rosin/.test(s.group)) head.append(el('div', 'note', `${s.c} · ${s.group} · ${s.periods}. tund: ${s.info}${s.cancelled ? ' (tühistatud)' : ''}`));
       else other.push(`${SHORT[i]} ${dm(d)} · ${s.c} · ${s.group} · ${s.periods}. tund: ${s.info}`);
     }
+    col.append(head);
+    const dayLessons = out.filter(b => b.day === i);
+    if (!dayLessons.length) {
+      const free = el('div', 'freeday', 'Vaba päev');
+      free.style.gridRow = `2 / span ${N}`;
+      col.append(free); grid.append(col); continue;
+    }
+    // bell times of the campus where most of the day's lessons are
+    const count = {}; dayLessons.forEach(b => count[b.campus] = (count[b.campus] || 0) + b.hours);
+    const main = dayLessons.find(b => b.campus === Object.keys(count).sort((a, b) => count[b] - count[a])[0]);
+    const bells = main.bells || [];
+    // lessons that share slots go into one cell
+    const clusters = [];
+    for (const b of dayLessons.filter(b => b.p0).sort((a, b) => a.p0 - b.p0 || a.p1 - b.p1)) {
+      const c = clusters[clusters.length - 1];
+      if (c && b.p0 <= c.p1) { c.items.push(b); c.p1 = Math.max(c.p1, b.p1); }
+      else clusters.push({ p0: b.p0, p1: b.p1, items: [b] });
+    }
+    const last = Math.max(...clusters.map(c => c.p1), 0);
+    const taken = new Set(); clusters.forEach(c => { for (let n = c.p0; n <= c.p1; n++) taken.add(n); });
+    for (let n = 1; n <= N; n++) {
+      if (taken.has(n)) continue;
+      const bell = bells[n - 1];
+      const slot = el('div', 'slot' + (n > last ? ' trail' : ''));
+      slot.style.gridRow = String(n + 1);
+      slot.append(el('span', 'num', `${n}.`), el('span', 'mono', bell ? `${bell.start}–${bell.end}` : ''), el('span', 'freetxt', 'vaba'));
+      col.append(slot);
+    }
+    const card = b => {
+      const kons = /konsultatsioon|järelvastamine/i.test(b.subject);
+      const end = new Date(d); end.setHours(0, mins(b.end), 0, 0);
+      const c = el('div', `lesson ${b.campus}${kons ? ' kons' : ''}${end < now ? ' past' : ''}`);
+      const time = el('div', 'time'); time.append(el('span', null, `${b.start}–${b.end}`), el('span', null, (b.lessons ? `${b.lessons}. tund · ` : '') + `${b.hours} ak/h`));
+      c.append(time, el('div', 'subj', b.subject), el('div', 'meta', [b.group, b.room || 'ruum puudub', b.campusName].filter(Boolean).join(' · ')));
+      return c;
+    };
+    for (const c of clusters) {
+      const cell = el('div', 'cell');
+      cell.style.gridRow = `${c.p0 + 1} / ${c.p1 + 2}`;
+      c.items.forEach(b => cell.append(card(b)));
+      if (c.items.length > 1) cell.append(el('div', 'note', 'Kattuvad tunnid'));
+      col.append(cell);
+    }
+    // anything the bell schedule could not place goes underneath
+    const loose = dayLessons.filter(b => !b.p0);
+    if (loose.length) { const cell = el('div', 'cell'); cell.style.gridRow = `${N + 2}`; loose.forEach(b => cell.append(card(b))); col.append(cell); }
     grid.append(col);
   }
   const det = $('otherSubs'), ul = det.querySelector('ul');

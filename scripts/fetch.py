@@ -93,6 +93,15 @@ def plokid(andmed, opetaja):
     return out
 
 
+def kellad(andmed):
+    """Tunniajad järjekorras: indeks + 1 = tunni number."""
+    for t in andmed['tables']:
+        if t['id'] == 'periods':
+            rows = sorted(t['data_rows'], key=lambda r: int(r.get('period') or 0))
+            return [{'start': r.get('starttime'), 'end': r.get('endtime')} for r in rows if str(r.get('period', '')).isdigit()]
+    return []
+
+
 def puhasta(s):
     return re.sub(r'\s+', ' ', html.unescape(re.sub(r'<[^>]+>', ' ', s))).strip()
 
@@ -136,6 +145,7 @@ def linnak(lid, tana):
             v['hidden'] = True
         else:
             v['blocks'] = plokid(r['dbiAccessorRes'], opetaja)
+            v['bells'] = kellad(r['dbiAccessorRes'])
         versioonid.append(v)
     return {'campus': lid, 'fetchedAt': now_iso(), 'versions': versioonid, 'subs': asendused(host, tana)}
 
@@ -173,7 +183,8 @@ def varu_linnak(lid):
             p0, p1 = b.pop('p0'), b.pop('p1')
             if p0 and p1:
                 b['lessons'] = str(p0) if p0 == p1 else f'{p0}–{p1}'
-        versioonid.append({'tt': 0, 'name': f"{e:%d.%m}-{r:%d.%m.%y} (varuallikas)", 'from': nadal['monday'], 'blocks': plokid_})
+        versioonid.append({'tt': 0, 'name': f"{e:%d.%m}-{r:%d.%m.%y} (varuallikas)", 'from': nadal['monday'], 'blocks': plokid_,
+                           'bells': [{'start': k['start'], 'end': k['end']} for k in kellad]})
     return {'campus': lid, 'fetchedAt': indeks.get('generated') or now_iso(), 'versions': versioonid, 'subs': [],
             'fallback': True}
 
