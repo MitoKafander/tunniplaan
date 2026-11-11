@@ -383,7 +383,7 @@ function renderHero() {
   hero.classList.add(a.campus); heroTarget = a; body.disabled = false;
   set(live ? `Praegu · veel ${dur(a.e - n)}` : `Järgmisena · ${dur(a.s - n)} pärast`,
     `${whenLabel(a.date)} ${a.start}–${a.end}`, a.room, a.subject,
-    [a.group, a.lessons ? `${a.lessons}. tund` : '', a.campusName].filter(Boolean).join(' · '),
+    [a.group, a.lessons ? `${a.lessons}. tund` : '', `${a.hours} ak/h`, a.campusName].filter(Boolean).join(' · '),
     b && isoLocal(b.date) === isoLocal(a.date) ? `Seejärel ${b.start}–${b.end} · ${b.subject}${b.room ? ' · ' + b.room : ''}` : '');
 }
 
@@ -465,7 +465,7 @@ function buildDay(i, ctx, solo) {
     if (live) top.append(el('span', 'tag', 'praegu'));
     top.append(el('span', 'room' + (b.room ? '' : ' none'), b.room || 'ruumita'));
     c.append(top, el('div', 'subj', b.subject),
-      el('div', 'meta', [b.group, b.lessons ? `${b.lessons}. tund` : '', b.campusName].filter(Boolean).join(' · ')));
+      el('div', 'meta', [b.group, b.lessons ? `${b.lessons}. tund` : '', `${b.hours} ak/h`, b.campusName].filter(Boolean).join(' · ')));
     return c;
   };
   for (const c of clusters) {
