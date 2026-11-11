@@ -3,182 +3,241 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#1b1f1d">
+<meta name="theme-color" content="#f5f6f3" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121513" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Tunniplaan">
 <title>Rosini tunniplaan</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap">
 <style>
+/* Layout: "what's next" card on top, then view switch (day / week / lunch) and a week strip of day chips.
+   A day is a column of numbered lesson slots: free slots are quiet grey cells, lessons are campus-coloured blocks. */
 *, *::before, *::after { box-sizing: border-box; }
-html { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
-body { margin: 0; }
-[hidden] { display: none !important; }
-/* Layout: one column; header with week stepper, "next up" strip, then a Mon–Fri grid (stacks on phones). Campus = colour. */
 :root {
-  --bg: #f5f6f3; --surface: #ffffff; --ink: #1b1f1d; --muted: #5d6662; --line: #dfe3df;
-  --kesk: #2f5fd0; --kesk-soft: #e6edfb; --must: #c2551b; --must-soft: #fbece3;
-  --warn: #9a6a00; --warn-soft: #fff4d6; --accent: #1b1f1d;
+  --bg: #f5f6f3; --surface: #ffffff; --raised: #ffffff; --cell: #eceeea; --ink: #1b1f1d; --muted: #5d6662; --line: #dfe3df;
+  --kesk: #2f5fd0; --kesk-soft: #e4ebfb; --on-kesk: #ffffff;
+  --must: #bd4f17; --must-soft: #fbeade; --on-must: #ffffff;
+  --warn: #8a5d00; --warn-soft: #fff3d1;
   --f-display: "Bricolage Grotesque", "Figtree", system-ui, sans-serif;
   --f-body: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
   --f-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  color-scheme: light dark;
 }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
-  --bg: #121513; --surface: #1b1f1d; --ink: #e8ece9; --muted: #9aa49f; --line: #2c322f;
-  --kesk: #86a8ff; --kesk-soft: #1d2a47; --must: #ff9a62; --must-soft: #3a2418;
-  --warn: #f2c14e; --warn-soft: #3a3016; --accent: #e8ece9; color-scheme: dark; } }
-:root[data-theme="dark"] {
-  --bg: #121513; --surface: #1b1f1d; --ink: #e8ece9; --muted: #9aa49f; --line: #2c322f;
-  --kesk: #86a8ff; --kesk-soft: #1d2a47; --must: #ff9a62; --must-soft: #3a2418;
-  --warn: #f2c14e; --warn-soft: #3a3016; --accent: #e8ece9; color-scheme: dark; }
+@media (prefers-color-scheme: dark) { :root {
+  --bg: #121513; --surface: #1b1f1d; --raised: #333a36; --cell: #232826; --ink: #e8ece9; --muted: #9aa49f; --line: #2e3531;
+  --kesk: #8fafff; --kesk-soft: #1c2a4a; --on-kesk: #0d1730;
+  --must: #ff9d68; --must-soft: #3b2416; --on-must: #2b1305;
+  --warn: #f2c14e; --warn-soft: #382e12; } }
 
-body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.45; }
-.wrap { max-width: 1120px; margin: 0 auto; padding-block: 20px 48px;
-  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
-  display: grid; gap: 18px; }
-h1 { font-family: var(--f-display); font-size: clamp(24px, 4vw, 32px); margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
-.mono { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+html { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.4;
+  -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; }
+[hidden] { display: none !important; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 button { font: inherit; color: inherit; cursor: pointer; }
-button:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--kesk); outline-offset: 2px; }
-
-header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; }
-.sub { color: var(--muted); font-size: 13px; display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; }
-.legend { display: inline-flex; gap: 6px; align-items: center; }
-.dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+button:focus-visible { outline: 2px solid var(--kesk); outline-offset: 2px; }
+.mono { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-block: 12px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 14px; }
+.eyebrow { font-size: 11.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 700; }
+.tag { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; background: var(--ink); color: var(--bg); border-radius: 999px; padding: 1px 7px; white-space: nowrap; }
+.dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; flex: none; }
 .dot.K { background: var(--kesk); } .dot.M { background: var(--must); }
+.room { font-family: var(--f-mono); font-size: 12.5px; font-weight: 500; padding: 2px 8px; border-radius: 6px; white-space: nowrap; }
+.hero.K .room, .lesson.K .room { background: var(--kesk); color: var(--on-kesk); }
+.hero.M .room, .lesson.M .room { background: var(--must); color: var(--on-must); }
+.room.none { background: transparent !important; color: var(--muted) !important; font-family: var(--f-body); padding-inline: 0; }
 
-.bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
-.tabs, .stepper { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--surface); }
-.tabs button, .stepper button { border: 0; background: transparent; padding: 8px 14px; }
-.tabs button[aria-selected="true"] { background: var(--ink); color: var(--bg); }
-.stepper .label { padding: 8px 12px; min-width: 150px; text-align: center; border-inline: 1px solid var(--line); font-weight: 600; }
-.stepper button:hover, .tabs button:not([aria-selected="true"]):hover { background: var(--line); }
+/* next-up card */
+.hero { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 10px 14px 14px; display: grid; gap: 6px; }
+.hero.K { background: var(--kesk-soft); border-color: transparent; }
+.hero.M { background: var(--must-soft); border-color: transparent; }
+.hero-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; min-height: 34px; }
+.statuswrap { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+.status.err { color: var(--warn); font-weight: 600; }
+.iconbtn { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line); background: var(--surface); display: grid; place-items: center; padding: 0; }
+.iconbtn.spin svg { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.hero-body { background: none; border: 0; padding: 0; width: 100%; text-align: left; display: grid; gap: 3px; }
+.hero-body:disabled { cursor: default; }
+.hero-main { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; font-family: var(--f-display); font-weight: 700;
+  font-size: clamp(21px, 5.4vw, 28px); letter-spacing: -.01em; line-height: 1.15; }
+.hero .room { font-size: 15px; padding: 3px 10px; letter-spacing: 0; }
+.hero-subj { font-weight: 600; font-size: 16px; overflow-wrap: anywhere; }
+.hero-meta { color: var(--muted); font-size: 13.5px; }
+.hero-then { font-size: 13.5px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 8px; margin-top: 4px; }
 
-.refresh { display: inline-flex; align-items: center; gap: 8px; }
-.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 8px 14px; font-weight: 600; }
-.btn:hover:not(:disabled) { border-color: var(--ink); }
-.btn:disabled { opacity: .55; cursor: progress; }
-.status { font-size: 13px; color: var(--muted); }
-.status.err { color: var(--warn); }
+/* view switch + week strip */
+.bar { display: grid; gap: 10px; }
+@media (min-width: 761px) { .bar { grid-template-columns: auto minmax(0, 440px); justify-content: space-between; align-items: end; } }
+.seg { display: flex; background: var(--cell); border-radius: 12px; padding: 3px; gap: 2px; }
+.seg button { flex: 1; border: 0; background: transparent; padding: 0 20px; min-height: 38px; border-radius: 9px; font-weight: 600; color: var(--muted); }
+.seg button[aria-selected="true"] { background: var(--raised); color: var(--ink); box-shadow: 0 1px 2px rgb(0 0 0 / .16); }
+.weeknav { display: grid; gap: 5px; min-width: 0; }
+.weekcap { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 12.5px; color: var(--muted); min-height: 28px; padding-inline: 36px; }
+.pill { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 3px 14px; font-size: 12.5px; font-weight: 600; color: var(--ink); min-height: 28px; }
+.chiprow { display: flex; gap: 4px; align-items: stretch; }
+.arrow { flex: 0 0 32px; border: 0; background: transparent; border-radius: 10px; font-size: 22px; line-height: 1; color: var(--muted); padding: 0; }
+.arrow:hover { background: var(--cell); color: var(--ink); }
+.chips { display: flex; gap: 6px; flex: 1; min-width: 0; }
+.chip { flex: 1; min-width: 0; border: 1px solid var(--line); background: var(--surface); border-radius: 12px; padding: 6px 0 6px;
+  display: grid; justify-items: center; gap: 2px; min-height: 56px; }
+.chip .wd { font-size: 11.5px; color: var(--muted); font-weight: 600; line-height: 1.1; }
+.chip .dn { font-family: var(--f-display); font-size: 18px; font-weight: 700; line-height: 1; }
+.chip .dots { display: flex; gap: 3px; height: 7px; }
+.chip.today { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.chip[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+.chip[aria-pressed="true"] .wd { color: inherit; opacity: .75; }
 
-.next { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: baseline; }
-.next .eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
-.next strong { font-family: var(--f-display); font-size: 19px; }
-
-.grid { --n: 8; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); grid-template-rows: auto repeat(var(--n), minmax(40px, auto)) auto; column-gap: 10px; row-gap: 6px; }
-.day { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px; min-width: 0;
-  display: grid; grid-row: 1 / -1; grid-template-rows: subgrid; row-gap: 6px; }
-@media (max-width: 760px) {
-  .grid { grid-template-columns: 1fr; grid-template-rows: none; row-gap: 10px; }
-  .day { grid-row: auto; display: flex; flex-direction: column; gap: 6px; }
-  .slot { min-height: 34px; }
-  .slot.trail { display: none; }
-}
-.dayhead { grid-row: 1; display: grid; gap: 6px; align-content: start; }
-.cell { display: grid; gap: 6px; align-content: stretch; min-width: 0; }
-.cell .lesson { height: 100%; }
-.cell:has(.lesson + .lesson) .lesson { height: auto; }
-.slot { display: flex; align-items: center; gap: 8px; padding: 0 10px; border: 1px dashed var(--line); border-radius: 10px; color: var(--muted); font-size: 12.5px; min-width: 0; }
-.slot .num { font-weight: 600; min-width: 2.2ch; }
-.slot .mono { font-size: 11.5px; }
-.slot .freetxt { margin-left: auto; font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; opacity: .7; }
-.freeday { display: grid; place-items: center; color: var(--muted); border: 1px dashed var(--line); border-radius: 10px; font-size: 13px; }
-@media (max-width: 760px) { .freeday { grid-row: auto !important; padding: 10px; } }
-.day.today { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink); }
-.day h3 { margin: 0; font-size: 14px; font-weight: 600; display: flex; justify-content: space-between; gap: 8px; }
-.day h3 .mono { color: var(--muted); font-size: 12px; font-weight: 500; }
-.empty { color: var(--muted); font-size: 13px; }
-.lesson { border-radius: 10px; padding: 9px 10px; display: grid; gap: 2px; align-content: start; border-left: 4px solid; min-width: 0; }
-.lesson.K { background: var(--kesk-soft); border-color: var(--kesk); }
-.lesson.M { background: var(--must-soft); border-color: var(--must); }
-.lesson.kons { background: transparent; border-style: dashed; border-left-style: solid; border-width: 1px 1px 1px 4px; }
-.lesson .time { font-family: var(--f-mono); font-size: 12.5px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 8px; }
-.lesson .time span { white-space: nowrap; }
-.lesson .subj { font-weight: 600; overflow-wrap: anywhere; }
-.lesson .meta { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+/* days */
+main { display: grid; gap: 12px; min-height: 45vh; align-content: start; }
+#view-day { display: grid; gap: 12px; max-width: 640px; }
+.notes { display: grid; gap: 6px; }
+.notes:empty { display: none; }
+.notes p { margin: 0; font-size: 13px; background: var(--warn-soft); border-radius: 10px; padding: 8px 12px; }
+.notes p b { color: var(--warn); }
+.empty { color: var(--muted); font-size: 13.5px; margin: 0; }
+.grid { --n: 8; display: grid; gap: 10px; }
+.day { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 10px; min-width: 0;
+  display: flex; flex-direction: column; gap: 5px; }
+.day.today { border-color: var(--ink); }
+.dayhead { display: grid; gap: 6px; padding: 2px 2px 3px; }
+.dayhead h2 { margin: 0; font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.dayhead .date { margin-left: auto; color: var(--muted); font-size: 12px; font-weight: 500; }
+.day.solo { padding: 12px; }
+.day.solo .dayhead h2 { font-family: var(--f-display); font-size: 20px; }
+.slot { display: flex; align-items: center; gap: 10px; min-height: 32px; padding: 0 10px; border-radius: 8px; background: var(--cell);
+  color: var(--muted); font-size: 12.5px; min-width: 0; }
+.slot .num { font-weight: 700; min-width: 2ch; text-align: right; }
+.slot .mono { font-size: 12px; white-space: nowrap; }
+.slot .tag { margin-left: auto; }
+.slot.now { color: var(--ink); box-shadow: inset 0 0 0 2px var(--ink); }
+.slot.trail { display: none; }
+.freeday { display: grid; place-items: center; color: var(--muted); background: var(--cell); border-radius: 8px; font-size: 13px; padding: 14px; text-align: center; }
+.cell { display: grid; gap: 5px; min-width: 0; min-height: calc(var(--span, 1) * 37px - 5px); }
+.lesson { border-radius: 10px; padding: 8px 10px 9px; display: grid; gap: 3px; align-content: start; min-width: 0; border: 1px solid transparent; }
+.lesson.K { background: var(--kesk-soft); } .lesson.M { background: var(--must-soft); }
+.lesson.kons { background: transparent; }
+.lesson.kons.K { border: 1px dashed var(--kesk); } .lesson.kons.M { border: 1px dashed var(--must); }
+.lesson .top { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.lesson .time { font-family: var(--f-mono); font-size: 13px; font-weight: 500; white-space: nowrap; }
+.lesson .room { margin-left: auto; }
+.lesson .subj { font-weight: 600; line-height: 1.25; overflow-wrap: anywhere; }
+.lesson .meta { font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
 .lesson.past { opacity: .55; }
-.note { font-size: 12.5px; border-radius: 8px; padding: 6px 8px; background: var(--warn-soft); color: var(--ink); border: 1px solid var(--warn); }
+.lesson.now { box-shadow: 0 0 0 2px var(--ink); }
+.note { font-size: 12.5px; border-radius: 8px; padding: 6px 8px; background: var(--warn-soft); color: var(--ink); }
+@media (min-width: 761px) {
+  .grid { grid-template-columns: repeat(5, minmax(0, 1fr)); grid-template-rows: auto repeat(var(--n), minmax(34px, auto)) auto; column-gap: 10px; row-gap: 5px; }
+  .grid .day { display: grid; grid-row: 1 / -1; grid-template-rows: subgrid; row-gap: 5px; }
+  .grid .dayhead { grid-row: 1; }
+  .grid .slot.trail { display: flex; opacity: .5; }
+  .grid .slot .tag { display: none; }
+}
 
-.campusnote { display: grid; gap: 6px; }
-.campusnote p { margin: 0; font-size: 13px; color: var(--muted); }
-.campusnote p b { color: var(--warn); }
-details { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; }
-summary { cursor: pointer; font-weight: 600; font-size: 14px; }
-details ul { margin: 8px 0 0; padding-left: 18px; font-size: 13px; display: grid; gap: 4px; }
-.totals { font-size: 13px; color: var(--muted); }
-
-.lunch { display: grid; gap: 12px; }
-.daychips { display: flex; flex-wrap: wrap; gap: 6px; }
-.daychips button { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 6px 12px; }
-.daychips button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
-.menus { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-@media (max-width: 760px) { .menus { grid-template-columns: 1fr; } }
-.menu { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; border-top: 4px solid; min-width: 0; }
-.menu.K { border-top-color: var(--kesk); } .menu.M { border-top-color: var(--must); }
-.menu h3 { margin: 0 0 8px; font-family: var(--f-display); font-size: 18px; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
-.menu h3 small { font-family: var(--f-body); font-size: 12px; font-weight: 600; color: var(--muted); }
-.menu h3 .here { color: var(--ink); background: var(--line); border-radius: 999px; padding: 2px 8px; }
-.menu ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+/* lunch */
+.peek { width: 100%; text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 11px 14px 12px; display: grid; gap: 3px; }
+.peek .row { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.peek .more { font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+.peek .dish { font-weight: 600; overflow-wrap: anywhere; }
+.peek .dish.alt { font-weight: 400; color: var(--muted); font-size: 13.5px; }
+.menus { display: grid; gap: 12px; }
+@media (min-width: 761px) { .menus { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.menu { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; min-width: 0; }
+.menu h2 { margin: 0 0 10px; font-family: var(--f-display); font-size: 18px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.menu h2 .dot { width: 10px; height: 10px; }
+.menu h2 small { font-family: var(--f-body); font-size: 11.5px; font-weight: 600; background: var(--cell); border-radius: 999px; padding: 2px 9px; }
+.menu ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 7px; }
 .menu li { overflow-wrap: anywhere; }
-.menu li .lab { display: block; font-size: 11.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+.menu li .lab { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 700; }
 .menu li.main { font-weight: 600; }
-.foot { font-size: 12.5px; color: var(--muted); }
-@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* footer */
+.foot { display: grid; gap: 10px; font-size: 12.5px; color: var(--muted); }
+.foot p { margin: 0; max-width: 70ch; }
+.totals { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: center; font-size: 13px; }
+.totals:empty { display: none; }
+.legend { display: inline-flex; gap: 6px; align-items: center; }
+.legend b { color: var(--ink); font-weight: 600; }
+details { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; }
+summary { cursor: pointer; font-weight: 600; font-size: 13.5px; color: var(--ink); }
+details ul { margin: 8px 0 0; padding-left: 18px; font-size: 13px; display: grid; gap: 4px; }
+@media (prefers-reduced-motion: reduce) { .iconbtn.spin svg { animation: none; } }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <header>
-    <div style="display:grid;gap:6px">
-      <h1>Mikk Rosin · tunniplaan</h1>
-      <div class="sub">
-        <span class="legend"><span class="dot K"></span>Kesklinn · Pärnu mnt 57</span>
-        <span class="legend"><span class="dot M"></span>Mustamäe · Sõpruse pst 182</span>
+  <h1 class="sr">Mikk Rosini tunniplaan</h1>
+
+  <section class="hero" id="hero">
+    <div class="hero-top">
+      <span class="eyebrow" id="heroEyebrow">Tunniplaan</span>
+      <span class="statuswrap">
+        <span class="status" id="status"></span>
+        <button class="iconbtn" id="refreshBtn" aria-label="Värskenda andmeid" title="Värskenda">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        </button>
+      </span>
+    </div>
+    <button class="hero-body" id="heroBody" disabled>
+      <span class="hero-main"><span id="heroWhen">Laen tunniplaani…</span><span class="room" id="heroRoom" hidden></span></span>
+      <span class="hero-subj" id="heroSubj" hidden></span>
+      <span class="hero-meta" id="heroMeta" hidden></span>
+    </button>
+    <div class="hero-then" id="heroThen" hidden></div>
+  </section>
+
+  <nav class="bar" aria-label="Vaade ja nädal">
+    <div class="seg" role="tablist">
+      <button role="tab" id="v-day" aria-selected="false">Päev</button>
+      <button role="tab" id="v-week" aria-selected="false">Nädal</button>
+      <button role="tab" id="v-lunch" aria-selected="false">Lõuna</button>
+    </div>
+    <div class="weeknav">
+      <div class="weekcap"><span id="weekLabel"></span><button class="pill" id="todayBtn" hidden>Täna</button></div>
+      <div class="chiprow">
+        <button class="arrow" id="prev" aria-label="Eelmine nädal">‹</button>
+        <div class="chips" id="chips"></div>
+        <button class="arrow" id="next" aria-label="Järgmine nädal">›</button>
       </div>
     </div>
-    <div class="refresh">
-      <span class="status" id="status">Laen…</span>
-      <button class="btn" id="refreshBtn">Värskenda</button>
-    </div>
-  </header>
+  </nav>
 
-  <div class="bar">
-    <div class="tabs" role="tablist">
-      <button role="tab" id="tab-tt" aria-selected="true">Tunniplaan</button>
-      <button role="tab" id="tab-lunch" aria-selected="false">Lõuna</button>
-    </div>
-    <div class="stepper">
-      <button id="prev" aria-label="Eelmine nädal">‹</button>
-      <span class="label mono" id="weekLabel">—</span>
-      <button id="next" aria-label="Järgmine nädal">›</button>
-    </div>
-  </div>
+  <main id="content">
+    <div class="notes" id="notes"></div>
+    <section id="view-day" hidden></section>
+    <section id="view-week" hidden><div class="grid" id="grid"></div></section>
+    <section id="view-lunch" hidden><div class="menus" id="menus"></div></section>
+  </main>
 
-  <section id="view-tt" style="display:grid;gap:14px">
-    <div class="next" id="nextUp"><span class="eyebrow">Järgmisena</span><strong>—</strong></div>
-    <div class="campusnote" id="campusNote"></div>
-    <div class="grid" id="grid"></div>
+  <footer class="foot">
     <div class="totals" id="totals"></div>
     <details id="otherSubs" hidden><summary>Muud muudatused minu rühmades</summary><ul></ul></details>
-  </section>
-
-  <section id="view-lunch" class="lunch" hidden>
-    <div class="daychips" id="dayChips"></div>
-    <div class="menus" id="menus"></div>
-  </section>
-
-  <p class="foot" id="foot">Allikas: EduPage (kesklinn-techno, mustamae-techno) ja menuu.techno.ee. Andmed uuenevad koolipäevadel iga 30 min järel.</p>
+    <p id="srcNote"></p>
+  </footer>
 </div>
 
 <script>
+'use strict';
 const DAYS = ['Esmaspäev', 'Teisipäev', 'Kolmapäev', 'Neljapäev', 'Reede'];
 const SHORT = ['E', 'T', 'K', 'N', 'R'];
-const CAMPUS = { kesklinn: { code: 'K', name: 'Kesklinn', url: 'https://kesklinn-techno.edupage.org/timetable/' },
-                 mustamae: { code: 'M', name: 'Mustamäe', url: 'https://mustamae-techno.edupage.org/timetable/' } };
+const MONTHS = ['jaanuar', 'veebruar', 'märts', 'aprill', 'mai', 'juuni', 'juuli', 'august', 'september', 'oktoober', 'november', 'detsember'];
+const MON_SHORT = ['jaan', 'veebr', 'märts', 'apr', 'mai', 'juuni', 'juuli', 'aug', 'sept', 'okt', 'nov', 'dets'];
+const CAMPUS = { kesklinn: { code: 'K', name: 'Kesklinn' }, mustamae: { code: 'M', name: 'Mustamäe' } };
+const KEY_OF = { K: 'kesklinn', M: 'mustamae' };
+const $ = id => document.getElementById(id);
+const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
 
-// ---------- dates ----------
+// ---------- time (…/?now=2026-11-12T09:00 previews another moment) ----------
+const qNow = new Date(new URLSearchParams(location.search).get('now') || NaN);
+const nowOffset = isNaN(qNow) ? 0 : qNow - Date.now();
+const now = () => new Date(Date.now() + nowOffset);
 const pad = n => String(n).padStart(2, '0');
 const isoLocal = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const parseIso = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d, 12); };
@@ -186,9 +245,40 @@ const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); r
 const mondayOf = d => { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12); return addDays(x, -((x.getDay() + 6) % 7)); };
 const dm = d => `${pad(d.getDate())}.${pad(d.getMonth() + 1)}`;
 const mins = s => { const [h, m] = (s || '0:0').split(':').map(Number); return h * 60 + m; };
+const at = (d, hhmm) => { const x = new Date(d); x.setHours(0, mins(hhmm), 0, 0); return x; };
 const SCHOOL_WEEK1 = parseIso('2026-08-31');
-const schoolWeek = mon => Math.floor((mon - SCHOOL_WEEK1) / (7 * 864e5)) + 1;
+const schoolWeek = mon => Math.round((mon - SCHOOL_WEEK1) / (7 * 864e5)) + 1;
+// the school day to show by default: today, or next Monday at the weekend
+function target() { const n = now(); let mon = mondayOf(n), idx = (n.getDay() + 6) % 7; if (idx > 4) { mon = addDays(mon, 7); idx = 0; } return { mon, idx }; }
+function dur(ms) {
+  const m = Math.max(1, Math.round(ms / 60000));
+  if (m < 60) return `${m} min`;
+  const h = Math.floor(m / 60), r = m % 60;
+  if (h < 24) return h < 6 && r ? `${h} h ${r} min` : `${h} h`;
+  return `${Math.floor(h / 24)} päeva`;
+}
+function whenLabel(d) {
+  const n = now();
+  if (isoLocal(d) === isoLocal(n)) return 'Täna';
+  if (isoLocal(d) === isoLocal(addDays(n, 1))) return 'Homme';
+  return `${DAYS[(d.getDay() + 6) % 7]} ${dm(d)}`;
+}
+function weekCaption(mon) {
+  const fri = addDays(mon, 4);
+  const range = mon.getMonth() === fri.getMonth()
+    ? `${mon.getDate()}.–${fri.getDate()}. ${MONTHS[fri.getMonth()]}`
+    : `${mon.getDate()}. ${MON_SHORT[mon.getMonth()]} – ${fri.getDate()}. ${MON_SHORT[fri.getMonth()]}`;
+  return `näd ${schoolWeek(mon)} · ${range}`;
+}
 
+// ---------- state ----------
+let snap = null, loading = false, loadError = false, lastLoad = 0, heroTarget = null;
+let { mon: weekMon, idx: dayIdx } = target();
+let view = matchMedia('(max-width: 760px)').matches ? 'day' : 'week';
+try { const v = localStorage.getItem('tt-view'); if (v === 'day' || v === 'week') view = v; } catch (e) {}
+try { const s = JSON.parse(localStorage.getItem('tt-snap') || 'null'); if (s && s.fetchedAt) snap = s; } catch (e) {}
+
+// ---------- data model ----------
 // EduPage's own start date is sometimes stale when a week is copied forward; the name carries the real range.
 function versionMonday(v) {
   const m = String(v.name || '').match(/(\d{2})\.(\d{2})-\d{2}\.\d{2}\.(\d{2})/);
@@ -197,18 +287,6 @@ function versionMonday(v) {
   const d = parseIso(v.from);
   return isoLocal(mondayOf(d.getDay() === 0 ? addDays(d, 1) : d));
 }
-
-// ---------- state ----------
-let snap = null;
-let weekMon = mondayOf(new Date());
-if (new Date().getDay() === 6 || new Date().getDay() === 0) weekMon = addDays(weekMon, 7);
-let tab = 'tt';
-let lunchDay = null;
-try { if (localStorage.getItem('tt-tab') === 'lunch') tab = 'lunch'; } catch (e) {}
-
-const $ = id => document.getElementById(id);
-const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
-
 function weekFor(campusKey, mon) {
   const c = snap && snap[campusKey];
   if (!c) return { state: 'none' };
@@ -221,7 +299,6 @@ function weekFor(campusKey, mon) {
   if (earlier && !later && key <= isoLocal(addDays(parseIso(earlier.monday), 7 * 12))) return { state: 'carried', v: earlier };
   return { state: 'missing' };
 }
-
 // Lesson numbers: from the scraper ("7–8"), else matched against the campus bell times.
 function withSlots(b) {
   const m = String(b.lessons || '').match(/^(\d+)(?:–(\d+))?$/);
@@ -230,7 +307,6 @@ function withSlots(b) {
   if (i0 >= 0 && i1 >= i0) { b.p0 = i0 + 1; b.p1 = i1 + 1; b.lessons = b.p0 === b.p1 ? String(b.p0) : `${b.p0}–${b.p1}`; }
   return b;
 }
-
 function lessonsForWeek(mon) {
   const out = [], notes = [];
   for (const [key, meta] of Object.entries(CAMPUS)) {
@@ -242,155 +318,219 @@ function lessonsForWeek(mon) {
   out.sort((a, b) => a.day - b.day || mins(a.start) - mins(b.start));
   return { out, notes };
 }
+// the campus where most of a day's lessons are
+function mainCampus(dayLessons) {
+  const count = {}; dayLessons.forEach(b => count[b.campus] = (count[b.campus] || 0) + b.hours);
+  return Object.keys(count).sort((a, b) => count[b] - count[a])[0];
+}
+// lessons that have not ended yet, soonest first
+function upcoming() {
+  const n = now(), list = [];
+  for (let w = 0; w < 4 && list.length < 2; w++) {
+    const mon = addDays(mondayOf(n), 7 * w);
+    for (const b of lessonsForWeek(mon).out) {
+      const date = addDays(mon, b.day), s = at(date, b.start), e = at(date, b.end);
+      if (e > n) list.push({ ...b, mon, date, s, e });
+    }
+  }
+  return list.sort((a, b) => a.s - b.s);
+}
 
 // ---------- render ----------
 function render() {
-  $('tab-tt').setAttribute('aria-selected', tab === 'tt');
-  $('tab-lunch').setAttribute('aria-selected', tab === 'lunch');
-  $('view-tt').hidden = tab !== 'tt';
-  $('view-lunch').hidden = tab !== 'lunch';
-  const fri = addDays(weekMon, 4);
-  $('weekLabel').textContent = `näd ${schoolWeek(weekMon)} · ${dm(weekMon)}–${dm(fri)}`;
-  if (snap) {
-    const t = new Date(snap.fetchedAt);
-    const age = (Date.now() - t) / 36e5;
-    const st = $('status');
-    st.className = 'status' + (age > 30 ? ' err' : '');
-    st.textContent = `EduPage seis ${dm(t)} kell ${pad(t.getHours())}:${pad(t.getMinutes())}` + (age > 30 ? ' · andmed on vanad' : '');
-  }
-  renderNext();
-  renderGrid();
-  renderLunch();
+  for (const v of ['day', 'week', 'lunch']) { $('v-' + v).setAttribute('aria-selected', view === v); $('view-' + v).hidden = view !== v; }
+  $('weekLabel').textContent = weekCaption(weekMon);
+  const t = target();
+  $('todayBtn').hidden = isoLocal(weekMon) === isoLocal(t.mon) && (view === 'week' || dayIdx === t.idx);
+  renderStatus(); renderHero();
+  const wk = snap ? lessonsForWeek(weekMon) : { out: [], notes: [] };
+  const isos = [0, 1, 2, 3, 4].map(i => isoLocal(addDays(weekMon, i)));
+  const subs = !snap ? [] : [...(snap.kesklinn?.subs || []).map(s => ({ ...s, c: 'Kesklinn' })), ...(snap.mustamae?.subs || []).map(s => ({ ...s, c: 'Mustamäe' }))]
+    .filter(s => isos.includes(s.date)).map(s => ({ ...s, idx: isos.indexOf(s.date), mine: /Rosin/.test(s.info) || /Rosin/.test(s.group) }));
+  const ctx = { out: wk.out, notes: wk.notes, subs, N: Math.max(4, ...wk.out.filter(b => b.p0).map(b => b.p1)),
+    partial: wk.notes.some(n => n.w.state !== 'ok' && n.w.state !== 'carried') };
+  renderChips(ctx); renderNotes(ctx);
+  if (view === 'day') renderDay(ctx); else if (view === 'week') renderWeek(ctx); else renderLunch(ctx);
+  renderFooter(ctx);
 }
 
-function renderNext() {
-  const box = $('nextUp');
-  box.replaceChildren(el('span', 'eyebrow', 'Järgmisena'));
-  if (!snap) { box.append(el('strong', null, 'Andmed laadimata')); return; }
-  const now = new Date();
-  for (let w = 0; w < 3; w++) {
-    const mon = addDays(mondayOf(now), 7 * w);
-    const { out } = lessonsForWeek(mon);
-    const nxt = out.find(b => { const end = addDays(mon, b.day); end.setHours(0, mins(b.end), 0, 0); return end > now; });
-    if (nxt) {
-      const d = addDays(mon, nxt.day);
-      const sameDay = isoLocal(d) === isoLocal(now);
-      const when = sameDay ? 'Täna' : (isoLocal(d) === isoLocal(addDays(now, 1)) ? 'Homme' : `${DAYS[nxt.day]} ${dm(d)}`);
-      const s = new Date(d); s.setHours(0, mins(nxt.start), 0, 0);
-      box.append(el('strong', null, `${when} ${nxt.start}–${nxt.end}${nxt.lessons ? ` (${nxt.lessons}. tund)` : ''} · ${nxt.campusName}`),
-                 el('span', null, [nxt.subject, nxt.group, nxt.room].filter(Boolean).join(' · ')));
-      if (sameDay && s <= now) box.append(el('span', 'note', 'Käib praegu'));
-      return;
-    }
-  }
-  box.append(el('strong', null, 'Lähinädalatel tunde ei ole'));
+function renderStatus() {
+  const st = $('status'), btn = $('refreshBtn');
+  btn.classList.toggle('spin', loading);
+  st.className = 'status';
+  if (!snap) { st.textContent = ''; return; }
+  const t = new Date(snap.fetchedAt), real = new Date();
+  const stamp = (isoLocal(t) === isoLocal(real) ? '' : dm(t) + ' ') + `${pad(t.getHours())}:${pad(t.getMinutes())}`;
+  st.title = `Andmed uuendatud ${dm(t)} kell ${pad(t.getHours())}:${pad(t.getMinutes())}`;
+  if (loadError && !loading) { st.classList.add('err'); st.textContent = `võrguta · ${stamp}`; }
+  else if ((real - t) / 36e5 > 30) { st.classList.add('err'); st.textContent = `vana seis · ${stamp}`; }
+  else st.textContent = stamp;
 }
 
-function renderGrid() {
-  const grid = $('grid'), noteBox = $('campusNote');
-  grid.replaceChildren(); noteBox.replaceChildren();
-  if (!snap) { grid.append(el('p', 'empty', 'Tunniplaani andmeid ei saanud laadida. Vajuta „Värskenda”.')); $('totals').textContent = ''; return; }
-  const { out, notes } = lessonsForWeek(weekMon);
-  for (const n of notes) {
-    if (snap[n.key]?.fallback) noteBox.append(Object.assign(el('p'), { innerHTML: `<b>${n.meta.name}:</b> EduPage ei vastanud, tunnid on võetud kolleegi tunniplaanisaidist. Asendusi selle linnaku kohta ei näidata.` }));
-    if (n.w.state === 'missing') noteBox.append(Object.assign(el('p'), { innerHTML: `<b>${n.meta.name}:</b> selle nädala plaani pole EduPage’is veel avaldatud.` }));
-    if (n.w.state === 'hidden') noteBox.append(Object.assign(el('p'), { innerHTML: `<b>${n.meta.name}:</b> plaan on olemas, aga avalikult peidetud (tt ${n.w.v.tt}).` }));
-    if (n.w.state === 'carried') noteBox.append(Object.assign(el('p'), { innerHTML: `<b>${n.meta.name}:</b> eraldi nädalaplaani pole, näidatud on viimane kehtiv versioon (${n.w.v.name.split(' (')[0]}).` }));
-  }
-  const now = new Date(), todayIso = isoLocal(now);
-  const subs = [...(snap.kesklinn?.subs || []).map(s => ({ ...s, c: 'Kesklinn' })), ...(snap.mustamae?.subs || []).map(s => ({ ...s, c: 'Mustamäe' }))];
-  const other = [];
-  const slotted = out.filter(b => b.p0);
-  const N = Math.max(4, ...slotted.map(b => b.p1));
-  grid.style.setProperty('--n', N);
+function renderHero() {
+  const hero = $('hero'), body = $('heroBody');
+  hero.className = 'hero'; heroTarget = null; body.disabled = true;
+  const set = (eyebrow, when, room, subj, meta, then) => {
+    $('heroEyebrow').textContent = eyebrow; $('heroWhen').textContent = when;
+    for (const [id, text] of [['heroRoom', room], ['heroSubj', subj], ['heroMeta', meta], ['heroThen', then]]) { $(id).hidden = !text; $(id).textContent = text || ''; }
+  };
+  if (!snap) return loadError && !loading
+    ? set('Tunniplaan', 'Andmeid ei saanud laadida', '', 'Kontrolli võrguühendust ja proovi uuesti.')
+    : set('Tunniplaan', 'Laen tunniplaani…');
+  const up = upcoming(), n = now();
+  if (!up.length) return set('Järgmisena', 'Lähinädalatel tunde ei ole');
+  const a = up[0], b = up[1], live = a.s <= n;
+  hero.classList.add(a.campus); heroTarget = a; body.disabled = false;
+  set(live ? `Praegu · veel ${dur(a.e - n)}` : `Järgmisena · ${dur(a.s - n)} pärast`,
+    `${whenLabel(a.date)} ${a.start}–${a.end}`, a.room, a.subject,
+    [a.group, a.lessons ? `${a.lessons}. tund` : '', a.campusName].filter(Boolean).join(' · '),
+    b && isoLocal(b.date) === isoLocal(a.date) ? `Seejärel ${b.start}–${b.end} · ${b.subject}${b.room ? ' · ' + b.room : ''}` : '');
+}
+
+function renderChips(ctx) {
+  const box = $('chips'), todayIso = isoLocal(now());
+  box.replaceChildren();
   for (let i = 0; i < 5; i++) {
-    const d = addDays(weekMon, i), iso = isoLocal(d);
-    const col = el('div', 'day' + (iso === todayIso ? ' today' : ''));
-    const head = el('div', 'dayhead');
-    const h = el('h3'); h.append(el('span', null, DAYS[i]), el('span', 'mono', dm(d))); head.append(h);
-    for (const s of subs.filter(s => s.date === iso)) {
-      if (/Rosin/.test(s.info) || /Rosin/.test(s.group)) head.append(el('div', 'note', `${s.c} · ${s.group} · ${s.periods}. tund: ${s.info}${s.cancelled ? ' (tühistatud)' : ''}`));
-      else other.push(`${SHORT[i]} ${dm(d)} · ${s.c} · ${s.group} · ${s.periods}. tund: ${s.info}`);
-    }
-    col.append(head);
-    const dayLessons = out.filter(b => b.day === i);
-    if (!dayLessons.length) {
-      const free = el('div', 'freeday', 'Vaba päev');
-      free.style.gridRow = `2 / span ${N}`;
-      col.append(free); grid.append(col); continue;
-    }
-    // bell times of the campus where most of the day's lessons are
-    const count = {}; dayLessons.forEach(b => count[b.campus] = (count[b.campus] || 0) + b.hours);
-    const main = dayLessons.find(b => b.campus === Object.keys(count).sort((a, b) => count[b] - count[a])[0]);
-    const bells = main.bells || [];
-    // lessons that share slots go into one cell
-    const clusters = [];
-    for (const b of dayLessons.filter(b => b.p0).sort((a, b) => a.p0 - b.p0 || a.p1 - b.p1)) {
-      const c = clusters[clusters.length - 1];
-      if (c && b.p0 <= c.p1) { c.items.push(b); c.p1 = Math.max(c.p1, b.p1); }
-      else clusters.push({ p0: b.p0, p1: b.p1, items: [b] });
-    }
-    const last = Math.max(...clusters.map(c => c.p1), 0);
-    const taken = new Set(); clusters.forEach(c => { for (let n = c.p0; n <= c.p1; n++) taken.add(n); });
-    for (let n = 1; n <= N; n++) {
-      if (taken.has(n)) continue;
-      const bell = bells[n - 1];
-      const slot = el('div', 'slot' + (n > last ? ' trail' : ''));
-      slot.style.gridRow = String(n + 1); slot.style.order = n;
-      slot.append(el('span', 'num', `${n}.`), el('span', 'mono', bell ? `${bell.start}–${bell.end}` : ''), el('span', 'freetxt', 'vaba'));
-      col.append(slot);
-    }
-    const card = b => {
-      const kons = /konsultatsioon|järelvastamine/i.test(b.subject);
-      const end = new Date(d); end.setHours(0, mins(b.end), 0, 0);
-      const c = el('div', `lesson ${b.campus}${kons ? ' kons' : ''}${end < now ? ' past' : ''}`);
-      const time = el('div', 'time'); time.append(el('span', null, `${b.start}–${b.end}`), el('span', null, (b.lessons ? `${b.lessons}. tund · ` : '') + `${b.hours} ak/h`));
-      c.append(time, el('div', 'subj', b.subject), el('div', 'meta', [b.group, b.room || 'ruum puudub', b.campusName].filter(Boolean).join(' · ')));
-      return c;
-    };
-    for (const c of clusters) {
-      const cell = el('div', 'cell');
-      cell.style.gridRow = `${c.p0 + 1} / ${c.p1 + 2}`; cell.style.order = c.p0;
-      c.items.forEach(b => cell.append(card(b)));
-      if (c.items.length > 1) cell.append(el('div', 'note', 'Kattuvad tunnid'));
-      col.append(cell);
-    }
-    // anything the bell schedule could not place goes underneath
-    const loose = dayLessons.filter(b => !b.p0);
-    if (loose.length) { const cell = el('div', 'cell'); cell.style.gridRow = `${N + 2}`; cell.style.order = 999; loose.forEach(b => cell.append(card(b))); col.append(cell); }
-    grid.append(col);
+    const d = addDays(weekMon, i);
+    const b = el('button', 'chip' + (isoLocal(d) === todayIso ? ' today' : ''));
+    b.setAttribute('aria-pressed', view !== 'week' && i === dayIdx);
+    b.setAttribute('aria-label', `${DAYS[i]} ${dm(d)}`);
+    const dots = el('span', 'dots');
+    for (const c of ['K', 'M']) if (ctx.out.some(l => l.day === i && l.campus === c)) dots.append(el('i', 'dot ' + c));
+    b.append(el('span', 'wd', SHORT[i]), el('span', 'dn', String(d.getDate())), dots);
+    b.onclick = () => { dayIdx = i; if (view === 'week') setView('day'); else render(); };
+    box.append(b);
   }
-  const det = $('otherSubs'), ul = det.querySelector('ul');
-  ul.replaceChildren(...other.map(t => el('li', null, t)));
-  det.hidden = !other.length;
-  const tot = { K: 0, M: 0 };
-  out.forEach(b => { if (!/konsultatsioon/i.test(b.subject)) tot[b.campus] += b.hours; });
-  $('totals').textContent = `Kontakttunde sel nädalal: Kesklinn ${tot.K} ak/h · Mustamäe ${tot.M} ak/h (konsultatsioonideta). Asendusi kontrollitakse eilsest kuni 2 nädalat ette.`;
 }
 
-function renderLunch() {
-  const chips = $('dayChips'), menus = $('menus');
-  chips.replaceChildren(); menus.replaceChildren();
-  const todayIso = isoLocal(new Date());
-  const days = [0, 1, 2, 3, 4].map(i => isoLocal(addDays(weekMon, i)));
-  if (!lunchDay || !days.includes(lunchDay)) lunchDay = days.includes(todayIso) ? todayIso : days[0];
-  days.forEach((iso, i) => {
-    const b = el('button', null, `${SHORT[i]} ${dm(parseIso(iso))}`);
-    b.setAttribute('aria-pressed', iso === lunchDay);
-    b.onclick = () => { lunchDay = iso; renderLunch(); };
-    chips.append(b);
-  });
-  const dayIdx = days.indexOf(lunchDay);
-  const { out } = snap ? lessonsForWeek(weekMon) : { out: [] };
-  const here = new Set(out.filter(b => b.day === dayIdx).map(b => b.campus));
+function renderNotes(ctx) {
+  const box = $('notes');
+  box.replaceChildren();
+  if (!snap || view === 'lunch') return;
+  const add = (name, text) => { const p = el('p'); p.append(el('b', null, name + ': '), document.createTextNode(text)); box.append(p); };
+  for (const n of ctx.notes) {
+    if (n.w.state === 'missing' || n.w.state === 'none') add(n.meta.name, 'selle nädala plaani pole EduPage’is veel avaldatud.');
+    if (n.w.state === 'hidden') add(n.meta.name, 'selle nädala plaan on olemas, aga avalikult peidetud.');
+  }
+}
+
+function placeholder() { return el('p', 'empty', loadError && !loading ? 'Tunniplaani ei saanud laadida.' : 'Laen…'); }
+
+function buildDay(i, ctx, solo) {
+  const n = now(), d = addDays(weekMon, i), iso = isoLocal(d), isToday = iso === isoLocal(n);
+  const col = el('div', 'day' + (isToday ? ' today' : '') + (solo ? ' solo' : ''));
+  const head = el('div', 'dayhead'), h = el('h2');
+  h.append(el('span', null, DAYS[i]));
+  if (isToday) h.append(el('span', 'tag', 'täna'));
+  h.append(el('span', 'mono date', dm(d)));
+  head.append(h);
+  for (const s of ctx.subs.filter(s => s.idx === i && s.mine))
+    head.append(el('div', 'note', `${s.c} · ${s.group} · ${s.periods}. tund: ${s.info}${s.cancelled ? ' (tühistatud)' : ''}`));
+  col.append(head);
+  const dayLessons = ctx.out.filter(b => b.day === i);
+  if (!dayLessons.length) {
+    const free = el('div', 'freeday', ctx.partial ? 'Teadaolevalt tunde pole' : 'Vaba päev');
+    free.style.gridRow = `2 / span ${ctx.N}`;
+    col.append(free);
+    return col;
+  }
+  // free slots carry the bell times of the campus where the day's lessons are
+  const campus = mainCampus(dayLessons);
+  const bells = dayLessons.find(b => b.campus === campus).bells || [];
+  // lessons that share slots go into one cell
+  const clusters = [];
+  for (const b of dayLessons.filter(b => b.p0).sort((a, b) => a.p0 - b.p0 || a.p1 - b.p1)) {
+    const c = clusters[clusters.length - 1];
+    if (c && b.p0 <= c.p1) { c.items.push(b); c.p1 = Math.max(c.p1, b.p1); }
+    else clusters.push({ p0: b.p0, p1: b.p1, items: [b] });
+  }
+  const last = Math.max(0, ...clusters.map(c => c.p1));
+  const taken = new Set(); clusters.forEach(c => { for (let k = c.p0; k <= c.p1; k++) taken.add(k); });
+  for (let k = 1; k <= ctx.N; k++) {
+    if (taken.has(k)) continue;
+    const bell = bells[k - 1];
+    const live = isToday && bell && at(d, bell.start) <= n && n < at(d, bell.end);
+    const slot = el('div', 'slot' + (k > last ? ' trail' : '') + (live ? ' now' : ''));
+    slot.style.gridRow = String(k + 1); slot.style.order = k;
+    slot.append(el('span', 'num', String(k)), el('span', 'mono', bell ? `${bell.start}–${bell.end}` : ''));
+    if (live) slot.append(el('span', 'tag', 'praegu'));
+    col.append(slot);
+  }
+  const card = b => {
+    const kons = /konsultatsioon|järelvastamine/i.test(b.subject);
+    const s = at(d, b.start), e = at(d, b.end), live = s <= n && n < e;
+    const c = el('div', `lesson ${b.campus}${kons ? ' kons' : ''}${e <= n ? ' past' : ''}${live ? ' now' : ''}`);
+    const top = el('div', 'top');
+    top.append(el('span', 'time', `${b.start}–${b.end}`));
+    if (live) top.append(el('span', 'tag', 'praegu'));
+    top.append(el('span', 'room' + (b.room ? '' : ' none'), b.room || 'ruumita'));
+    c.append(top, el('div', 'subj', b.subject),
+      el('div', 'meta', [b.group, b.lessons ? `${b.lessons}. tund` : '', b.campusName].filter(Boolean).join(' · ')));
+    return c;
+  };
+  for (const c of clusters) {
+    const cell = el('div', 'cell');
+    cell.style.gridRow = `${c.p0 + 1} / ${c.p1 + 2}`; cell.style.order = c.p0; cell.style.setProperty('--span', c.p1 - c.p0 + 1);
+    c.items.forEach(b => cell.append(card(b)));
+    if (c.items.length > 1) cell.append(el('div', 'note', 'Kattuvad tunnid'));
+    col.append(cell);
+  }
+  // anything the bell schedule could not place goes underneath
+  const loose = dayLessons.filter(b => !b.p0);
+  if (loose.length) { const cell = el('div', 'cell'); cell.style.gridRow = String(ctx.N + 2); cell.style.order = 999; loose.forEach(b => cell.append(card(b))); col.append(cell); }
+  return col;
+}
+
+// the day's lunch at the campus where the lessons are
+function lunchPeek(i, ctx) {
+  const dayLessons = ctx.out.filter(b => b.day === i);
+  if (!dayLessons.length || !snap.lunch) return null;
+  const key = KEY_OF[mainCampus(dayLessons)];
+  const rows = snap.lunch[key]?.[isoLocal(addDays(weekMon, i))];
+  if (!rows || !rows.length) return null;
+  const labelled = rows.filter(r => r.label);
+  const pick = labelled.length ? labelled : rows.slice(0, 2);
+  const b = el('button', 'peek');
+  const row = el('span', 'row');
+  row.append(el('span', 'eyebrow', `Lõuna · ${CAMPUS[key].name}`), el('span', 'more', 'kogu menüü ›'));
+  b.append(row);
+  pick.forEach((r, k) => b.append(el('span', 'dish' + (k ? ' alt' : ''), (r.label && !/^lõuna/i.test(r.label) ? r.label + ': ' : '') + r.name)));
+  b.onclick = () => setView('lunch');
+  return b;
+}
+
+function renderDay(ctx) {
+  const box = $('view-day');
+  box.replaceChildren();
+  if (!snap) { box.append(placeholder()); return; }
+  box.append(buildDay(dayIdx, ctx, true));
+  const peek = lunchPeek(dayIdx, ctx);
+  if (peek) box.append(peek);
+}
+
+function renderWeek(ctx) {
+  const grid = $('grid');
+  grid.replaceChildren();
+  if (!snap) { grid.append(placeholder()); return; }
+  grid.style.setProperty('--n', ctx.N);
+  for (let i = 0; i < 5; i++) grid.append(buildDay(i, ctx, false));
+}
+
+function renderLunch(ctx) {
+  const menus = $('menus');
+  menus.replaceChildren();
+  if (!snap) { menus.append(placeholder()); return; }
+  const iso = isoLocal(addDays(weekMon, dayIdx));
+  const here = new Set(ctx.out.filter(b => b.day === dayIdx).map(b => b.campus));
   const order = Object.entries(CAMPUS).sort((a, b) => here.has(b[1].code) - here.has(a[1].code));
   for (const [key, meta] of order) {
-    const card = el('div', `menu ${meta.code}`);
-    const h = el('h3', null, meta.name);
-    if (here.has(meta.code)) h.append(el('small', 'here', 'sul on siin tunnid'));
+    const card = el('div', 'menu');
+    const h = el('h2');
+    h.append(el('i', 'dot ' + meta.code), el('span', null, meta.name));
+    if (here.has(meta.code)) h.append(el('small', null, 'sul on siin tunnid'));
     card.append(h);
-    const rows = snap?.lunch?.[key]?.[lunchDay];
-    if (!rows || !rows.length) card.append(el('p', 'empty', snap?.lunch ? 'Selle päeva menüüd pole avaldatud.' : 'Menüüd pole laaditud.'));
+    const rows = snap.lunch?.[key]?.[iso];
+    if (!rows || !rows.length) card.append(el('p', 'empty', snap.lunch ? 'Selle päeva menüüd pole avaldatud.' : 'Menüüd pole laaditud.'));
     else {
       const ul = el('ul');
       for (const r of rows) {
@@ -405,31 +545,89 @@ function renderLunch() {
   }
 }
 
-// ---------- events ----------
-$('prev').onclick = () => { weekMon = addDays(weekMon, -7); render(); };
-$('next').onclick = () => { weekMon = addDays(weekMon, 7); render(); };
-const setTab = t => { tab = t; try { localStorage.setItem('tt-tab', t); } catch (e) {} render(); };
-$('tab-tt').onclick = () => setTab('tt');
-$('tab-lunch').onclick = () => setTab('lunch');
-render();
+function renderFooter(ctx) {
+  const totals = $('totals'), det = $('otherSubs');
+  totals.replaceChildren();
+  if (snap && view !== 'lunch') {
+    const tot = { K: 0, M: 0 };
+    ctx.out.forEach(b => { if (!/konsultatsioon/i.test(b.subject)) tot[b.campus] += b.hours; });
+    totals.append(el('span', null, 'Sel nädalal'));
+    for (const meta of Object.values(CAMPUS)) {
+      const s = el('span', 'legend');
+      s.append(el('i', 'dot ' + meta.code), el('b', null, meta.name), document.createTextNode(`${tot[meta.code]} ak/h`));
+      totals.append(s);
+    }
+  }
+  const other = ctx.subs.filter(s => !s.mine);
+  det.querySelector('ul').replaceChildren(...other.map(s => el('li', null, `${SHORT[s.idx]} ${dm(addDays(weekMon, s.idx))} · ${s.c} · ${s.group} · ${s.periods}. tund: ${s.info}`)));
+  det.hidden = !other.length || view === 'lunch';
+  let src = 'Allikad: EduPage ja menuu.techno.ee. Andmed uuenevad koolipäeviti umbes iga 30 minuti järel.';
+  if (snap) { const t = new Date(snap.fetchedAt); src += ` Viimati uuendatud ${dm(t)} kell ${pad(t.getHours())}:${pad(t.getMinutes())}.`; }
+  if (snap && (snap.kesklinn?.fallback || snap.mustamae?.fallback))
+    src += ' Viimasel uuendusel EduPage ei vastanud: tunnid tulid kolleegi tunniplaanisaidist ja asendusi ei näidata.';
+  for (const n of ctx.notes) if (n.w.state === 'carried') src += ` ${n.meta.name}: eraldi nädalaplaani pole, näidatud on viimane kehtiv.`;
+  $('srcNote').textContent = src;
+}
 
-// ---------- data: site/data/snap.json, written by the GitHub Action ----------
+// ---------- actions ----------
+function setView(v) { view = v; if (v !== 'lunch') { try { localStorage.setItem('tt-view', v); } catch (e) {} } render(); }
+function shiftWeek(n) { weekMon = addDays(weekMon, 7 * n); render(); }
+function shiftDay(n) {
+  dayIdx += n;
+  if (dayIdx > 4) { dayIdx = 0; weekMon = addDays(weekMon, 7); }
+  if (dayIdx < 0) { dayIdx = 4; weekMon = addDays(weekMon, -7); }
+  render();
+}
+const step = n => view === 'week' ? shiftWeek(n) : shiftDay(n);
+for (const v of ['day', 'week', 'lunch']) $('v-' + v).onclick = () => setView(v);
+$('prev').onclick = () => shiftWeek(-1);
+$('next').onclick = () => shiftWeek(1);
+$('todayBtn').onclick = () => { ({ mon: weekMon, idx: dayIdx } = target()); render(); };
+$('heroBody').onclick = () => {
+  if (!heroTarget) return;
+  weekMon = heroTarget.mon; dayIdx = heroTarget.day;
+  if (view === 'lunch') view = 'day';
+  render();
+};
+$('refreshBtn').onclick = () => load();
+document.addEventListener('keydown', e => {
+  if (e.altKey || e.ctrlKey || e.metaKey) return;
+  if (e.key === 'ArrowLeft') step(-1); else if (e.key === 'ArrowRight') step(1);
+});
+// swipe: previous / next day (or week in the week view)
+let touch = null;
+$('content').addEventListener('touchstart', e => { touch = e.touches.length === 1 ? { x: e.touches[0].clientX, y: e.touches[0].clientY } : null; }, { passive: true });
+$('content').addEventListener('touchend', e => {
+  if (!touch) return;
+  const dx = e.changedTouches[0].clientX - touch.x, dy = e.changedTouches[0].clientY - touch.y;
+  touch = null;
+  if (Math.abs(dx) > 60 && Math.abs(dx) > 2 * Math.abs(dy)) step(dx < 0 ? 1 : -1);
+}, { passive: true });
+
+// ---------- data: data/snap.json is rebuilt by the GitHub Action ----------
 async function load() {
-  const st = $('status'), btn = $('refreshBtn');
-  btn.disabled = true;
+  if (loading) return;
+  loading = true; renderStatus();
   try {
     const r = await fetch('data/snap.json?t=' + Date.now(), { cache: 'no-store' });
     if (!r.ok) throw new Error(r.status);
-    snap = await r.json();
-    render();
-  } catch (e) {
-    st.className = 'status err';
-    st.textContent = snap ? 'Uuendamine ebaõnnestus, näitan varasemat seisu' : 'Andmeid ei saanud laadida (võrguühendus?)';
-  } finally { btn.disabled = false; }
+    const j = await r.json();
+    if (!j || !j.fetchedAt) throw new Error('vigane vastus');
+    // the service worker answers with its saved copy when there is no connection
+    const saved = r.headers.get('x-offline-copy') === '1';
+    snap = j; loadError = saved;
+    if (!saved) lastLoad = Date.now();
+    try { localStorage.setItem('tt-snap', JSON.stringify(j)); } catch (e) {}
+  } catch (e) { loadError = true; }
+  loading = false;
+  render();
 }
-$('refreshBtn').onclick = load;
-document.addEventListener('visibilitychange', () => { if (!document.hidden) load(); });
+render();
 load();
+document.addEventListener('visibilitychange', () => { if (!document.hidden && Date.now() - lastLoad > 60e3) load(); });
+// keep "next up", the now-marker and the data current while the page stays open
+setInterval(() => { if (document.hidden) return; if (Date.now() - lastLoad > 15 * 60e3) load(); else render(); }, 60e3);
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
 </body>
 </html>
