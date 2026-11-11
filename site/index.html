@@ -70,7 +70,7 @@ button:focus-visible { outline: 2px solid var(--kesk); outline-offset: 2px; }
   font-size: clamp(21px, 5.4vw, 28px); letter-spacing: -.01em; line-height: 1.15; }
 .hero .room { font-size: 15px; padding: 3px 10px; letter-spacing: 0; }
 .hero-subj { font-weight: 600; font-size: 16px; overflow-wrap: anywhere; }
-.hero-meta { color: var(--muted); font-size: 13.5px; }
+.hero .hero-meta { font-size: 13.5px; }
 .hero-then { font-size: 13.5px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 8px; margin-top: 4px; }
 
 /* view switch + week strip */
@@ -125,11 +125,18 @@ main { display: grid; gap: 12px; min-height: 45vh; align-content: start; }
 .lesson.K { background: var(--kesk-soft); } .lesson.M { background: var(--must-soft); }
 .lesson.kons { background: transparent; }
 .lesson.kons.K { border: 1px dashed var(--kesk); } .lesson.kons.M { border: 1px dashed var(--must); }
-.lesson .top { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
-.lesson .time { font-family: var(--f-mono); font-size: 13px; font-weight: 500; white-space: nowrap; }
-.lesson .room { margin-left: auto; }
-.lesson .subj { font-weight: 600; line-height: 1.25; overflow-wrap: anywhere; }
-.lesson .meta { font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
+.lesson .top { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; }
+.lesson .time { order: 1; font-family: var(--f-mono); font-size: 13px; font-weight: 500; white-space: nowrap; }
+.lesson .room { order: 2; margin-left: auto; }
+.lesson .detail { order: 3; flex-basis: 100%; }
+.lesson .subj { font-weight: 600; line-height: 1.25; overflow-wrap: anywhere; margin-top: 2px; }
+/* short facts in a row: each one stays whole, a line can only break between them */
+.bits { display: flex; flex-wrap: wrap; align-items: center; font-size: 12.5px; color: var(--muted); min-width: 0; }
+.bits > span { overflow-wrap: anywhere; }
+.bits > .nw { white-space: nowrap; }
+.bits > span + span::before { content: "·"; margin: 0 .4em; }
+.bits > .tag { margin-left: 8px; }
+
 .lesson.past { opacity: .55; }
 .lesson.now { box-shadow: 0 0 0 2px var(--ink); }
 .note { font-size: 12.5px; border-radius: 8px; padding: 6px 8px; background: var(--warn-soft); color: var(--ink); }
@@ -138,7 +145,7 @@ main { display: grid; gap: 12px; min-height: 45vh; align-content: start; }
   .grid .day { display: grid; grid-row: 1 / -1; grid-template-rows: subgrid; row-gap: 5px; }
   .grid .dayhead { grid-row: 1; }
   .grid .slot.trail { display: flex; opacity: .5; }
-  .grid .slot .tag { display: none; }
+  .grid .slot .tag, .grid .lesson .tag { display: none; }
 }
 
 /* lunch */
@@ -188,7 +195,7 @@ details ul { margin: 8px 0 0; padding-left: 18px; font-size: 13px; display: grid
     <button class="hero-body" id="heroBody" disabled>
       <span class="hero-main"><span id="heroWhen">Laen tunniplaani…</span><span class="room" id="heroRoom" hidden></span></span>
       <span class="hero-subj" id="heroSubj" hidden></span>
-      <span class="hero-meta" id="heroMeta" hidden></span>
+      <span class="hero-meta bits" id="heroMeta" hidden></span>
     </button>
     <div class="hero-then" id="heroThen" hidden></div>
   </section>
@@ -372,7 +379,9 @@ function renderHero() {
   hero.className = 'hero'; heroTarget = null; body.disabled = true;
   const set = (eyebrow, when, room, subj, meta, then) => {
     $('heroEyebrow').textContent = eyebrow; $('heroWhen').textContent = when;
-    for (const [id, text] of [['heroRoom', room], ['heroSubj', subj], ['heroMeta', meta], ['heroThen', then]]) { $(id).hidden = !text; $(id).textContent = text || ''; }
+    for (const [id, text] of [['heroRoom', room], ['heroSubj', subj], ['heroThen', then]]) { $(id).hidden = !text; $(id).textContent = text || ''; }
+    $('heroMeta').hidden = !(meta && meta.length);
+    $('heroMeta').replaceChildren(...(meta || []).map((t, k) => el('span', k ? 'nw' : null, t)));
   };
   if (!snap) return loadError && !loading
     ? set('Tunniplaan', 'Andmeid ei saanud laadida', '', 'Kontrolli võrguühendust ja proovi uuesti.')
@@ -382,9 +391,9 @@ function renderHero() {
   const a = up[0], b = up[1], live = a.s <= n;
   hero.classList.add(a.campus); heroTarget = a; body.disabled = false;
   set(live ? `Praegu · veel ${dur(a.e - n)}` : `Järgmisena · ${dur(a.s - n)} pärast`,
-    `${whenLabel(a.date)} ${a.start}–${a.end}`, a.room, a.subject,
-    [a.group, a.lessons ? `${a.lessons}. tund` : '', `${a.hours} ak/h`, a.campusName].filter(Boolean).join(' · '),
-    b && isoLocal(b.date) === isoLocal(a.date) ? `Seejärel ${b.start}–${b.end} · ${b.subject}${b.room ? ' · ' + b.room : ''}` : '');
+    `${whenLabel(a.date)} ${a.start}–${a.end}`, roomLabel(a.room), a.subject,
+    [a.group || a.campusName, a.lessons ? `${a.lessons}. tund` : '', `${a.hours} ak/h`, a.group ? a.campusName : ''].filter(Boolean),
+    b && isoLocal(b.date) === isoLocal(a.date) ? `Seejärel ${b.start}–${b.end} · ${b.subject}${b.room ? ' · ' + roomLabel(b.room) : ''}` : '');
 }
 
 function renderChips(ctx) {
@@ -413,6 +422,9 @@ function renderNotes(ctx) {
     if (n.w.state === 'hidden') add(n.meta.name, 'selle nädala plaan on olemas, aga avalikult peidetud.');
   }
 }
+
+// "B-103 - 105" (joined rooms) reads better, and fits, as "B-103–105"
+const roomLabel = r => (r || '').replace(/\s+-\s+/g, '–');
 
 function placeholder() { return el('p', 'empty', loadError && !loading ? 'Tunniplaani ei saanud laadida.' : 'Laen…'); }
 
@@ -460,12 +472,14 @@ function buildDay(i, ctx, solo) {
     const kons = /konsultatsioon|järelvastamine/i.test(b.subject);
     const s = at(d, b.start), e = at(d, b.end), live = s <= n && n < e;
     const c = el('div', `lesson ${b.campus}${kons ? ' kons' : ''}${e <= n ? ' past' : ''}${live ? ' now' : ''}`);
-    const top = el('div', 'top');
-    top.append(el('span', 'time', `${b.start}–${b.end}`));
-    if (live) top.append(el('span', 'tag', 'praegu'));
-    top.append(el('span', 'room' + (b.room ? '' : ' none'), b.room || 'ruumita'));
-    c.append(top, el('div', 'subj', b.subject),
-      el('div', 'meta', [b.group, b.lessons ? `${b.lessons}. tund` : '', `${b.hours} ak/h`, b.campusName].filter(Boolean).join(' · ')));
+    const top = el('div', 'top'), detail = el('span', 'detail bits'), who = el('div', 'bits');
+    if (b.lessons) detail.append(el('span', 'nw', `${b.lessons}. tund`));
+    detail.append(el('span', 'nw', `${b.hours} ak/h`));
+    if (live) detail.append(el('b', 'tag', 'praegu'));
+    top.append(el('span', 'time', `${b.start}–${b.end}`), detail, el('span', 'room' + (b.room ? '' : ' none'), roomLabel(b.room) || 'ruumita'));
+    if (b.group) who.append(el('span', null, b.group));
+    who.append(el('span', 'nw', b.campusName));
+    c.append(top, el('div', 'subj', b.subject), who);
     return c;
   };
   for (const c of clusters) {
