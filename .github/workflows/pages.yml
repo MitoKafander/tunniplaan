@@ -1,0 +1,43 @@
+name: Uuenda tunniplaani
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    # UTC: iga 30 min koolipäevadel 05–19 Eesti aja järgi, nädalavahetusel kord päevas
+    - cron: "*/30 4-17 * * 1-5"
+    - cron: "0 6 * * 0,6"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Loe EduPage ja lõunamenüü
+        run: python3 -I scripts/fetch.py
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
