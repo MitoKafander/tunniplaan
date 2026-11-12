@@ -2,6 +2,9 @@
 
 Mikk Rosini tunniplaan Techno Kesklinna ja Mustamäe linnakus koos asenduste ja lõunamenüüga.
 
+> **Jätkamiseks loe esmalt [RESUME_HERE.md](RESUME_HERE.md).** Seis 12.11.2026: leht töötab ja andmed tulevad
+> otse EduPage'ist, aga GitHubi ajastatud käivitused pole veel kordagi käivitunud.
+
 - Leht: https://mitokafander.github.io/tunniplaan/
 - Andmed: EduPage'i avalik API (`kesklinn-techno`, `mustamae-techno`) ja `menuu.techno.ee`.
 - GitHub Action (`.github/workflows/pages.yml`) käivitab `scripts/fetch.py`, kirjutab
