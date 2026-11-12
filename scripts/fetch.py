@@ -4,9 +4,10 @@
 menuu.techno.ee lõunamenüü ja kirjutab need faili site/data/snap.json.
 Käivitab GitHub Actions (.github/workflows/pages.yml). Ainult Pythoni standardteek.
 
-EduPage'i server lükkab GitHubi masinate ühendused sageli tagasi. Siis võetakse linnaku tunnid
-kolleegi avalikust tunniplaanisaidist (kasparsu.github.io/tahvel-tunniplaan, uueneb iga 30 min),
-kus Rosin on Kesklinnas „Mikk Rosin“ ja Mustamäel „Rosin“. Varuallikas asendusi ei sisalda.
+EduPage'i tulemüür ei lase läbi enamikku GitHubi Linuxi masinaid, seepärast käib töö macOS-i masinal.
+Kui EduPage ikkagi ei vasta, võetakse linnaku tunnid kolleegi avalikust tunniplaanisaidist
+(kasparsu.github.io/tahvel-tunniplaan), kus Rosin on Kesklinnas „Mikk Rosin“ ja Mustamäel „Rosin“.
+Varuallikas asendusi ei sisalda ja uueneb harva.
 """
 import datetime as dt
 import html

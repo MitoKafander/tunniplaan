@@ -4,9 +4,11 @@ on:
   push:
     branches: [main]
   schedule:
-    # UTC: iga 30 min koolipäevadel 05–19 Eesti aja järgi, nädalavahetusel kord päevas
-    - cron: "*/30 4-17 * * 1-5"
-    - cron: "0 6 * * 0,6"
+    # GitHub jätab täis- ja pooltunni käivitusi koormuse tõttu sageli vahele (kolleegi "*/30" andis
+    # u 2 käivitust päevas). Seepärast muud minutid ja tihedam samm; job "check" laseb päris töö
+    # läbi ainult siis, kui avaldatud andmed on vanemad kui 25 min. Ajad on UTC.
+    - cron: "3-59/10 3-17 * * 1-5"   # koolipäeviti u 05–20 Eesti aja järgi
+    - cron: "41 */2 * * *"           # muul ajal iga kahe tunni järel
   workflow_dispatch:
 
 permissions:
@@ -19,8 +21,38 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+  check:
     runs-on: ubuntu-latest
+    timeout-minutes: 3
+    outputs:
+      go: ${{ steps.age.outputs.go }}
+    steps:
+      - id: age
+        name: Kas avaldatud andmed on juba värsked?
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          go=true
+          if [ "$EVENT" = "schedule" ]; then
+            age=$(curl -fsS -m 20 "https://mitokafander.github.io/tunniplaan/data/snap.json?t=$(date +%s)" | python3 -c "
+          import json, sys, datetime as d
+          t = d.datetime.fromisoformat(json.load(sys.stdin)['fetchedAt'].replace('Z', '+00:00'))
+          print(int((d.datetime.now(d.timezone.utc) - t).total_seconds()))" || true)
+            if [ -n "$age" ]; then
+              echo "Avaldatud andmete vanus: $((age / 60)) min"
+              if [ "$age" -lt 1500 ]; then go=false; fi
+            fi
+          fi
+          echo "go=$go" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: check
+    if: needs.check.outputs.go == 'true'
+    # EduPage'i tulemüür ei lase läbi enamikku GitHubi Linuxi ja Windowsi masinaid (ühendus aegub).
+    # macOS-i masinad on teises võrgus ja pääsevad ligi (proov 12.11.2026: macOS 3/3, Linux 2/3,
+    # Linux ARM 0/3, Windows 0/3). Kui ka siit ei saa, võtab fetch.py tunnid varuallikast.
+    runs-on: macos-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

@@ -279,7 +279,7 @@ function weekCaption(mon) {
 }
 
 // ---------- state ----------
-let snap = null, loading = false, loadError = false, lastLoad = 0, heroTarget = null;
+let snap = null, loading = false, loadError = false, lastLoad = 0, heroTarget = null, flash = '';
 let { mon: weekMon, idx: dayIdx } = target();
 let view = matchMedia('(max-width: 760px)').matches ? 'day' : 'week';
 try { const v = localStorage.getItem('tt-view'); if (v === 'day' || v === 'week') view = v; } catch (e) {}
@@ -370,8 +370,8 @@ function renderStatus() {
   const stamp = (isoLocal(t) === isoLocal(real) ? '' : dm(t) + ' ') + `${pad(t.getHours())}:${pad(t.getMinutes())}`;
   st.title = `Andmed uuendatud ${dm(t)} kell ${pad(t.getHours())}:${pad(t.getMinutes())}`;
   if (loadError && !loading) { st.classList.add('err'); st.textContent = `võrguta · ${stamp}`; }
-  else if ((real - t) / 36e5 > 30) { st.classList.add('err'); st.textContent = `vana seis · ${stamp}`; }
-  else st.textContent = stamp;
+  else if ((real - t) / 36e5 > 5) { st.classList.add('err'); st.textContent = `vana seis · ${stamp}`; }
+  else st.textContent = flash ? `${flash} · ${stamp}` : stamp;
 }
 
 function renderHero() {
@@ -575,7 +575,7 @@ function renderFooter(ctx) {
   const other = ctx.subs.filter(s => !s.mine);
   det.querySelector('ul').replaceChildren(...other.map(s => el('li', null, `${SHORT[s.idx]} ${dm(addDays(weekMon, s.idx))} · ${s.c} · ${s.group} · ${s.periods}. tund: ${s.info}`)));
   det.hidden = !other.length || view === 'lunch';
-  let src = 'Allikad: EduPage ja menuu.techno.ee. Andmed uuenevad koolipäeviti umbes iga 30 minuti järel.';
+  let src = 'Allikad: EduPage ja menuu.techno.ee. Andmed uuenevad koolipäeviti umbes iga poole tunni, muul ajal paari tunni järel; värskendusnupp laeb viimase avaldatud seisu.';
   if (snap) { const t = new Date(snap.fetchedAt); src += ` Viimati uuendatud ${dm(t)} kell ${pad(t.getHours())}:${pad(t.getMinutes())}.`; }
   if (snap && (snap.kesklinn?.fallback || snap.mustamae?.fallback))
     src += ' Viimasel uuendusel EduPage ei vastanud: tunnid tulid kolleegi tunniplaanisaidist ja asendusi ei näidata.';
@@ -603,7 +603,13 @@ $('heroBody').onclick = () => {
   if (view === 'lunch') view = 'day';
   render();
 };
-$('refreshBtn').onclick = () => load();
+$('refreshBtn').onclick = async () => {
+  const before = snap && snap.fetchedAt;
+  await load();
+  if (!snap || loadError || snap.fetchedAt !== before) return;
+  flash = 'uuemat seisu pole'; renderStatus();
+  setTimeout(() => { flash = ''; renderStatus(); }, 5000);
+};
 document.addEventListener('keydown', e => {
   if (e.altKey || e.ctrlKey || e.metaKey) return;
   if (e.key === 'ArrowLeft') step(-1); else if (e.key === 'ArrowRight') step(1);
